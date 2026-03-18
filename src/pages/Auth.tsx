@@ -27,18 +27,23 @@ const Auth = () => {
 
         if (result.session && result.user) {
           toast.success("Account created!");
-          navigate(decodeURIComponent(returnTo));
+          navigate(decodeURIComponent(returnTo), { replace: true });
         } else {
-          // Email confirmation flow: keep them on auth, prompt to verify then log in.
           toast.success("Account created. Please confirm your email, then sign in.");
           setMode("login");
         }
       } else {
         await signInWithPassword({ email, password });
         toast.success("Welcome back!");
-        navigate(decodeURIComponent(returnTo));
+        navigate(decodeURIComponent(returnTo), { replace: true });
       }
     } catch (err: any) {
+      if (mode === "signup" && /already registered|already exists/i.test(err?.message || "")) {
+        setMode("login");
+        toast.info("That email already has an account — sign in instead.");
+        return;
+      }
+
       toast.error(err.message || "Authentication failed");
     } finally {
       setLoading(false);

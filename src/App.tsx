@@ -28,8 +28,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+
   if (loading) return null;
-  if (user) return <Navigate to="/studio" replace />;
+
+  if (user) {
+    const returnTo = new URLSearchParams(location.search).get("returnTo");
+    return <Navigate to={returnTo ? decodeURIComponent(returnTo) : "/studio"} replace />;
+  }
+
   return <>{children}</>;
 };
 
