@@ -78,10 +78,12 @@ const Studio = () => {
 
   const autoLookup = searchParams.get("autoLookup") === "true";
   const templateId = searchParams.get("template");
+  const customTemplate = searchParams.get("customTemplate") === "true";
 
   // Determine background and logo
   const uploadDataUrl = localStorage.getItem("designMatchUpload");
-  const backgroundUrl = (templateId && TEMPLATE_IMAGES[templateId]) || TEMPLATE_IMAGES["tshirt"];
+  const customTemplateUrl = customTemplate ? localStorage.getItem("designMatchTemplate") : null;
+  const backgroundUrl = customTemplateUrl || (templateId && TEMPLATE_IMAGES[templateId]) || TEMPLATE_IMAGES["tshirt"];
   const logoUrl = uploadDataUrl || undefined;
 
   // Load saved state per view
