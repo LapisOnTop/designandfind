@@ -4,21 +4,11 @@ import { Search, ShoppingBag, Upload, PencilRuler, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PhoneFrame from "@/components/PhoneFrame";
 
-const PRODUCTS = [
-  { id: "tshirt", name: "T-Shirt", icon: "👕" },
-  { id: "longsleeve", name: "Longsleeve", icon: "👚" },
-  { id: "poloshirt", name: "Polo Shirt", icon: "🎽" },
-  { id: "cup", name: "Cup", icon: "☕" },
-  { id: "cap", name: "Cap", icon: "🧢" },
-  { id: "shorts", name: "Shorts", icon: "🩳" },
-  { id: "pants", name: "Pants", icon: "👖" },
-  { id: "jeans", name: "Jeans", icon: "👖" },
-];
-
 const Landing = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showProductSelect, setShowProductSelect] = useState(false);
+  const templateInputRef = useRef<HTMLInputElement>(null);
+  const [showTemplatePrompt, setShowTemplatePrompt] = useState(false);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
