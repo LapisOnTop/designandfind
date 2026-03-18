@@ -32,6 +32,13 @@ const HeaderBar = ({ onLookup, isSearching, onSignOut, onSave }: HeaderBarProps)
     }
   };
 
+  const handleSignOutClick = () => {
+    if (!onSignOut) return;
+    if (window.confirm("Sign out of your account?")) {
+      onSignOut();
+    }
+  };
+
   return (
     <div className="flex items-center justify-between px-5 pt-10 pb-3 bg-background border-b border-border">
       <div className="flex items-center gap-2">
@@ -43,7 +50,7 @@ const HeaderBar = ({ onLookup, isSearching, onSignOut, onSave }: HeaderBarProps)
         </button>
         {onSignOut && (
           <button
-            onClick={onSignOut}
+            onClick={handleSignOutClick}
             className="p-1.5 rounded-lg bg-secondary text-muted-foreground active:bg-border transition-colors hover:text-foreground hover:bg-secondary/80"
           >
             <LogOut size={16} />
