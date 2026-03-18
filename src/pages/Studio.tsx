@@ -12,18 +12,12 @@ import SubscriptionGate from "@/components/SubscriptionGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import tshirtMockup from "@/assets/tshirt-mockup.png";
 
 type CategoryKey = "Visual Matches (Real)" | "Global General Marketplaces" | "Regional Powerhouses" | "Specialized & Niche Stores" | "Social & Local Commerce";
 
 const TEMPLATE_IMAGES: Record<string, string> = {
-  tshirt: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80",
-  longsleeve: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400&q=80",
-  poloshirt: "https://images.unsplash.com/photo-1586363104862-3a5e222eca01?w=400&q=80",
-  cup: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&q=80",
-  cap: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=400&q=80",
-  shorts: "https://images.unsplash.com/photo-1591195853828-11db59a44f6b?w=400&q=80",
-  pants: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400&q=80",
-  jeans: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&q=80",
+  tshirt: tshirtMockup,
 };
 
 export type CategorizedResults = Record<CategoryKey, ProductResult[]>;
