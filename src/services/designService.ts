@@ -73,7 +73,7 @@ export const loadDesign = async (params: {
       .maybeSingle();
 
     if (!error && data) {
-      return data as SerializedDesign;
+      return data as unknown as SerializedDesign;
     }
   }
 

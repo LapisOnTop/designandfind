@@ -224,6 +224,7 @@ const Studio = () => {
         canvasRef={canvasRef}
         controls={toolbarControls}
         onSubscribe={() => setShowSubscription(true)}
+        onRequirePro={() => setShowSubscription(true)}
       />
     </PhoneFrame>
   );

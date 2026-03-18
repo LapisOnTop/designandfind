@@ -4,21 +4,11 @@ import { Search, ShoppingBag, Upload, PencilRuler, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PhoneFrame from "@/components/PhoneFrame";
 
-const PRODUCTS = [
-  { id: "tshirt", name: "T-Shirt", icon: "👕" },
-  { id: "longsleeve", name: "Longsleeve", icon: "👚" },
-  { id: "poloshirt", name: "Polo Shirt", icon: "🎽" },
-  { id: "cup", name: "Cup", icon: "☕" },
-  { id: "cap", name: "Cap", icon: "🧢" },
-  { id: "shorts", name: "Shorts", icon: "🩳" },
-  { id: "pants", name: "Pants", icon: "👖" },
-  { id: "jeans", name: "Jeans", icon: "👖" },
-];
-
 const Landing = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showProductSelect, setShowProductSelect] = useState(false);
+  const templateInputRef = useRef<HTMLInputElement>(null);
+  const [showTemplatePrompt, setShowTemplatePrompt] = useState(false);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -37,8 +27,17 @@ const Landing = () => {
     }
   };
 
-  const handleProductSelect = (productId: string) => {
-    navigate(`/studio?template=${productId}`);
+  const handleTemplateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        localStorage.setItem("designMatchTemplate", dataUrl);
+        navigate("/studio?customTemplate=true");
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -115,8 +114,15 @@ const Landing = () => {
             <span>Upload Design</span>
           </button>
 
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            ref={templateInputRef}
+            onChange={handleTemplateUpload}
+          />
           <button
-            onClick={() => setShowProductSelect(true)}
+            onClick={() => setShowTemplatePrompt(true)}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-background text-foreground text-base font-bold active:scale-[0.98] transition-all border-2 border-primary shadow-sm"
           >
             <PencilRuler size={20} className="text-primary" />
@@ -124,47 +130,64 @@ const Landing = () => {
           </button>
         </motion.div>
 
-        {/* Product Selection Modal */}
+        {/* Template Prompt Modal */}
         <AnimatePresence>
-          {showProductSelect && (
+          {showTemplatePrompt && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-end"
+              className="absolute inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center px-6"
             >
               <motion.div
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="w-full bg-background/60 backdrop-blur-3xl rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.3)] border-t border-white/20 dark:border-white/10 p-6 pb-10"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="w-full bg-background/80 backdrop-blur-3xl rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.3)] border border-border p-6"
               >
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-foreground mx-auto">What are you designing?</h2>
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-lg font-bold text-foreground">Got a template?</h2>
                   <button
-                    onClick={() => setShowProductSelect(false)}
-                    className="absolute right-6 p-2 rounded-full bg-white/20 dark:bg-black/40 text-foreground transition-colors backdrop-blur-md"
+                    onClick={() => setShowTemplatePrompt(false)}
+                    className="p-1.5 rounded-full bg-secondary text-foreground transition-colors"
                   >
-                    <X size={20} />
+                    <X size={16} />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                  {PRODUCTS.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => handleProductSelect(product.id)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-white/30 dark:hover:bg-white/10 active:scale-[0.95] transition-all"
-                    >
-                      <div className="w-14 h-14 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md flex items-center justify-center text-2xl shadow-sm border border-white/30 dark:border-white/10">
-                        {product.icon}
-                      </div>
-                      <span className="text-xs font-semibold text-foreground text-center">
-                        {product.name}
-                      </span>
-                    </button>
-                  ))}
+                <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                  Have a template to use? If not, use ours or go find one at{" "}
+                  <a
+                    href="https://www.freepik.com/app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-semibold underline underline-offset-2"
+                  >
+                    Freepik
+                  </a>
+                  !
+                </p>
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => {
+                      setShowTemplatePrompt(false);
+                      navigate("/studio?template=tshirt");
+                    }}
+                    className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold active:scale-[0.98] transition-all"
+                  >
+                    Use Default Template
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowTemplatePrompt(false);
+                      templateInputRef.current?.click();
+                    }}
+                    className="w-full py-3 rounded-2xl bg-secondary text-foreground font-bold active:scale-[0.98] transition-all"
+                  >
+                    Upload My Template
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
