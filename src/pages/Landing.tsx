@@ -27,8 +27,17 @@ const Landing = () => {
     }
   };
 
-  const handleProductSelect = (productId: string) => {
-    navigate(`/studio?template=${productId}`);
+  const handleTemplateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        localStorage.setItem("designMatchTemplate", dataUrl);
+        navigate("/studio?customTemplate=true");
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
