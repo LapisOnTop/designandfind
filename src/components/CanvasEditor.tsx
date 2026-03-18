@@ -116,22 +116,34 @@ const CanvasEditor = ({
     };
 
     const loadBackgroundImage = (url: string, callback: () => void) => {
-      fabric.Image.fromURL(url, (img) => {
-        if (!img) return;
-        const scale = Math.min(358 / (img.width || 358), 440 / (img.height || 440));
-        img.scale(scale);
-        img.set({ originX: "center", originY: "center", left: 358 / 2, top: 440 / 2 });
+      const imgEl = new Image();
+      imgEl.crossOrigin = "anonymous";
+      imgEl.onload = () => {
+        // Crop: left half = front, right half = back
+        const halfW = imgEl.width / 2;
+        const cropX = activeView === "back" ? halfW : 0;
 
-        img.set({
-          selectable: false,
-          evented: false,
-          name: "productMockup",
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = halfW;
+        tempCanvas.height = imgEl.height;
+        const ctx = tempCanvas.getContext("2d")!;
+        ctx.drawImage(imgEl, cropX, 0, halfW, imgEl.height, 0, 0, halfW, imgEl.height);
+
+        fabric.Image.fromURL(tempCanvas.toDataURL(), (img) => {
+          if (!img) return;
+          const scale = Math.min(358 / (img.width || 358), 440 / (img.height || 440));
+          img.scale(scale);
+          img.set({ originX: "center", originY: "center", left: 358 / 2, top: 440 / 2 });
+          img.set({
+            selectable: false,
+            evented: false,
+            name: "productMockup",
+          });
+          canvas.setOverlayImage(img, canvas.renderAll.bind(canvas));
+          callback();
         });
-
-        // Use overlayImage so design layers sit between product color and mockup overlay
-        canvas.setOverlayImage(img, canvas.renderAll.bind(canvas));
-        callback();
-      }, { crossOrigin: "anonymous" });
+      };
+      imgEl.src = url;
     };
 
     const clampToPrintArea = (obj: fabric.Object) => {
