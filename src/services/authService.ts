@@ -78,7 +78,11 @@ export const signInWithPassword = async (params: {
     await ensureProfile(data.user, null);
   }
 
-  localStorage.setItem("designMatch_showProAfterLogin", "true");
+  // Only show subscription on first-ever login
+  const alreadySeen = localStorage.getItem("designMatch_subSeen");
+  if (!alreadySeen) {
+    localStorage.setItem("designMatch_showProAfterLogin", "true");
+  }
 
   return data;
 };

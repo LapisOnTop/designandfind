@@ -20,7 +20,8 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
     if (open) {
       setShowClose(false);
       setView("PAYWALL");
-      const timer = setTimeout(() => setShowClose(true), 2500); // Wait 2.5s before showing close button
+      localStorage.setItem("designMatch_subSeen", "true");
+      const timer = setTimeout(() => setShowClose(true), 3000);
       return () => clearTimeout(timer);
     }
   }, [open]);
