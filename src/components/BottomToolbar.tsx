@@ -121,10 +121,10 @@ const BottomToolbar = ({ canvasRef, controls, onSubscribe, onRequirePro }: Botto
   });
 
   return (
-    <div className="flex flex-col bg-background border-t border-border">
+    <div className="flex flex-col bg-background/50 backdrop-blur-3xl border-t border-foreground/10 shadow-[0_-4px_30px_rgba(0,0,0,0.1)] relative z-50">
 
       {/* GLOBAL SETTINGS ROW */}
-      <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-border/50 hide-scrollbar scroll-smooth bg-secondary/30">
+      <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth bg-foreground/5 backdrop-blur-md">
         <button onClick={() => controls.setActiveView(v => v === "front" ? "back" : "front")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
           <Shirt size={16} className={controls.activeView === "back" ? "text-primary" : ""} />
           <span className="text-[10px]">{controls.activeView === "front" ? "Front View" : "Back View"}</span>
@@ -149,7 +149,7 @@ const BottomToolbar = ({ canvasRef, controls, onSubscribe, onRequirePro }: Botto
       </div>
 
       {hasSelection && (
-        <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-border/50 hide-scrollbar scroll-smooth">
+        <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth">
           <button onClick={deleteObj} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-destructive shrink-0">
             <Trash2 size={16} />
             <span className="text-[10px]">Delete</span>
@@ -206,7 +206,7 @@ const BottomToolbar = ({ canvasRef, controls, onSubscribe, onRequirePro }: Botto
         </div>
       )}
 
-      <div className="flex items-center justify-end px-4 py-2 border-t border-border/50">
+      <div className="flex items-center justify-end px-4 py-2 border-t border-foreground/5">
         <button
           onClick={onSubscribe}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary px-3 py-1.5 rounded-full bg-primary/5 border border-primary/40 active:scale-95 transition-transform"

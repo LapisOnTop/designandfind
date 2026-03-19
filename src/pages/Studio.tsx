@@ -64,9 +64,8 @@ const Studio = () => {
   const [results, setResults] = useState<CategorizedResults | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signOut } = useAuth();
 
-  const [templateColor, setTemplateColor] = useState<string>("#ffffff");
+  const [templateColor, setTemplateColor] = useState<string>("#ef4444");
   const COLORS = ["#ffffff", "#1e293b", "#ef4444", "#3b82f6", "#22c55e"];
 
   // New Design Controls
@@ -156,8 +155,7 @@ const Studio = () => {
     }
   }, []);
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleExit = () => {
     navigate("/");
   };
 
@@ -171,7 +169,7 @@ const Studio = () => {
 
   return (
     <PhoneFrame>
-      <HeaderBar onLookup={handleLookup} isSearching={isSearching} onSignOut={handleSignOut} onSave={handleSave} />
+      <HeaderBar onLookup={handleLookup} isSearching={isSearching} onExit={handleExit} onSave={handleSave} />
 
       <div className="relative flex-1 flex flex-col overflow-hidden">
         <CanvasEditor

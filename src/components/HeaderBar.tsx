@@ -1,14 +1,14 @@
-import { Search, LogOut, Save, Sun, Moon } from "lucide-react";
+import { Search, ChevronLeft, Save, Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface HeaderBarProps {
   onLookup: () => void;
   isSearching: boolean;
-  onSignOut?: () => void;
+  onExit?: () => void;
   onSave?: () => void;
 }
 
-const HeaderBar = ({ onLookup, isSearching, onSignOut, onSave }: HeaderBarProps) => {
+const HeaderBar = ({ onLookup, isSearching, onExit, onSave }: HeaderBarProps) => {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -32,31 +32,30 @@ const HeaderBar = ({ onLookup, isSearching, onSignOut, onSave }: HeaderBarProps)
     }
   };
 
-  const handleSignOutClick = () => {
-    if (!onSignOut) return;
-    if (window.confirm("Sign out of your account?")) {
-      onSignOut();
+  const handleExitClick = () => {
+    if (onExit) {
+      onExit();
     }
   };
 
   return (
-    <div className="flex items-center justify-between px-5 pt-10 pb-3 bg-background border-b border-border">
+    <div className="flex items-center justify-between px-5 pt-10 pb-3 bg-background/50 backdrop-blur-3xl border-b border-foreground/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative z-50">
       <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
-          className="p-1.5 rounded-lg bg-secondary text-muted-foreground active:bg-border transition-colors hover:text-foreground hover:bg-secondary/80 mr-1"
+          className="p-1.5 rounded-lg bg-secondary/30 text-muted-foreground active:bg-border transition-colors hover:text-foreground hover:bg-secondary/50 mr-1"
         >
           {isDark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-        {onSignOut && (
+        {onExit && (
           <button
-            onClick={handleSignOutClick}
-            className="p-1.5 rounded-lg bg-secondary text-muted-foreground active:bg-border transition-colors hover:text-foreground hover:bg-secondary/80"
+            onClick={handleExitClick}
+            className="p-1.5 rounded-lg bg-secondary/30 text-muted-foreground active:bg-border transition-colors hover:text-foreground hover:bg-secondary/50"
           >
-            <LogOut size={16} />
+            <ChevronLeft size={16} />
           </button>
         )}
-        <h1 className="text-base font-semibold text-foreground tracking-tight ml-1">Studio</h1>
+        <h1 className="text-base font-semibold text-foreground tracking-tight ml-1 drop-shadow-sm">Studio</h1>
       </div>
       <div className="flex items-center gap-2">
         {onSave && (

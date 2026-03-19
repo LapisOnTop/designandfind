@@ -35,7 +35,7 @@ const CanvasEditor = ({
     const canvas = new fabric.Canvas(canvasElRef.current, {
       width: 358,
       height: 440,
-      backgroundColor: "#f8fafc",
+      backgroundColor: "transparent",
       preserveObjectStacking: true,
     });
 
@@ -264,8 +264,8 @@ const CanvasEditor = ({
   }, [initCanvas]);
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-surface overflow-hidden">
-      <canvas ref={canvasElRef} className="rounded-2xl shadow-sm border border-border" />
+    <div className="flex-1 flex items-center justify-center bg-transparent overflow-hidden">
+      <canvas ref={canvasElRef} className="rounded-2xl transition-all" />
     </div>
   );
 };
