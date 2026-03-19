@@ -65,20 +65,13 @@ const CanvasEditor = ({
     modesRef.current = { layoutMode, snapToGrid };
   }, [layoutMode, snapToGrid]);
 
-  useEffect(() => {
-    if (canvasRef.current) {
-      canvasRef.current.backgroundColor = showBg ? "#ffffff" : "transparent";
-      canvasRef.current.renderAll();
-    }
-  }, [showBg]);
-
   const initCanvas = useCallback(() => {
     if (!canvasElRef.current) return;
 
     const canvas = new fabric.Canvas(canvasElRef.current, {
       width: 358,
       height: 440,
-      backgroundColor: showBg ? "#ffffff" : "transparent",
+      backgroundColor: "transparent",
       preserveObjectStacking: true,
     });
 
@@ -94,7 +87,6 @@ const CanvasEditor = ({
     const printAreaRect = { w: 140, h: 180, x: 358 / 2, y: 440 / 2 - 20 };
 
     const setupPrintArea = () => {
-      // Remove old printArea if any
       const existing = canvas.getObjects().find(o => o.name === "printArea");
       if (existing) canvas.remove(existing);
 
@@ -133,7 +125,6 @@ const CanvasEditor = ({
           stroke: '#ccc', selectable: false, evented: false, name: `gridLineH${i}`
         }));
       }
-      // Send grid behind printArea
       const allGrid = canvas.getObjects().filter(o => o.name && o.name.startsWith("gridLine"));
       allGrid.forEach(line => canvas.sendToBack(line));
     };
@@ -142,7 +133,6 @@ const CanvasEditor = ({
       const imgEl = new Image();
       imgEl.crossOrigin = "anonymous";
       imgEl.onload = () => {
-        // Crop: left half = front, right half = back
         const halfW = imgEl.width / 2;
         const cropX = activeView === "back" ? halfW : 0;
 
@@ -152,7 +142,6 @@ const CanvasEditor = ({
         const ctx = tempCanvas.getContext("2d")!;
         ctx.drawImage(imgEl, cropX, 0, halfW, imgEl.height, 0, 0, halfW, imgEl.height);
 
-        // Trim exactly so the actual shirt pixels center exactly
         const trimmedCanvas = trimCanvas(tempCanvas);
 
         fabric.Image.fromURL(trimmedCanvas.toDataURL(), (img) => {
@@ -167,31 +156,17 @@ const CanvasEditor = ({
             selectable: false,
             evented: false,
             name: "productMockup",
-            visible: true, // Mockup always visible. Background is now canvas colored
+            visible: true,
+            shadow: new fabric.Shadow({
+              color: "rgba(0,0,0,0.15)",
+              blur: 25,
+              offsetX: 0,
+              offsetY: 10
+            })
           });
 
-          // Add mockup as a regular object at the BOTTOM of the stack
           canvas.add(img);
           canvas.sendToBack(img);
-
-          // Add a color tint overlay on top of the mockup with multiply blend
-          // This covers the entire canvas so the shirt gets "dyed"
-          const colorTint = new fabric.Rect({
-            width: 358,
-            height: 440,
-            left: 0,
-            top: 0,
-            fill: templateColor,
-            selectable: false,
-            evented: false,
-            name: "colorTint",
-            globalCompositeOperation: "multiply",
-            visible: templateColor !== "#ffffff",
-          });
-          canvas.add(colorTint);
-          // Place the tint right above the mockup (index 1)
-          canvas.moveTo(colorTint, 1);
-
           callback();
         });
       };
@@ -214,25 +189,21 @@ const CanvasEditor = ({
       let newLeft = obj.left || 0;
       let newTop = obj.top || 0;
 
-      // Adjust limits based on object origin
       const originXOffset = obj.originX === 'center' ? boundingRect.width / 2 : 0;
       const originYOffset = obj.originY === 'center' ? boundingRect.height / 2 : 0;
 
-      // Clamp Left/Right
       if (boundingRect.left < paLeft) {
         newLeft = paLeft + originXOffset;
       } else if (boundingRect.left + boundingRect.width > paRight) {
         newLeft = paRight - boundingRect.width + originXOffset;
       }
 
-      // Clamp Top/Bottom
       if (boundingRect.top < paTop) {
         newTop = paTop + originYOffset;
       } else if (boundingRect.top + boundingRect.height > paBottom) {
         newTop = paBottom - boundingRect.height + originYOffset;
       }
 
-      // Prevent scaling outside
       if (boundingRect.width > printAreaRect.w || boundingRect.height > printAreaRect.h) {
         const scaleX = printAreaRect.w / (obj.width || 1);
         const scaleY = printAreaRect.h / (obj.height || 1);
@@ -282,7 +253,6 @@ const CanvasEditor = ({
         });
       }
 
-      // Center snap logic
       if (!modesRef.current.snapToGrid && !modesRef.current.layoutMode) {
         const centerX = 358 / 2;
         const centerY = 440 / 2 - 20;
@@ -309,7 +279,38 @@ const CanvasEditor = ({
 
     canvasRef.current = canvas;
     return () => canvas.dispose();
-  }, [canvasRef, backgroundUrl, logoUrl, templateColor, showBg, savedState, showPrintArea, showGrid, activeView]);
+  }, [backgroundUrl, logoUrl, savedState, showPrintArea, showGrid, activeView]);
+
+  // Dynamic updates for templateColor and showBg without rebuilding the entire canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Apply greyish contrast background if active
+    canvas.backgroundColor = showBg ? "#f3f4f6" : "transparent";
+
+    // Apply blend mode filtering to the mockup
+    const mockup = canvas.getObjects().find(o => o.name === "productMockup") as fabric.Image | undefined;
+    if (mockup) {
+      mockup.filters = [];
+      if (templateColor !== "#ffffff") {
+        mockup.filters.push(
+          new fabric.Image.filters.BlendColor({
+            color: templateColor,
+            mode: "multiply",
+            alpha: 1
+          })
+        );
+      }
+      mockup.applyFilters();
+    }
+
+    // Remove the old colorTint rect if it exists from previous sessions
+    const oldTint = canvas.getObjects().find(o => o.name === "colorTint");
+    if (oldTint) canvas.remove(oldTint);
+
+    canvas.renderAll();
+  }, [showBg, templateColor]);
 
   useEffect(() => {
     const cleanup = initCanvas();

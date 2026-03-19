@@ -19,9 +19,11 @@ const SubscriptionPage = ({ open, onClose }: SubscriptionPageProps) => {
 
   const features = [
     "Unlimited product lookups",
-    "Access to supplier contacts",
-    "Priority search results",
-    "Export designs in HD",
+    "Export designs in HD (PNG/SVG)",
+    "Advanced Font, Stroke & Shadow tools",
+    "Remove watermarks",
+    "Access to specialized global suppliers",
+    "Priority support",
   ];
 
   return (
@@ -32,7 +34,7 @@ const SubscriptionPage = ({ open, onClose }: SubscriptionPageProps) => {
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="absolute inset-0 z-50 bg-background flex flex-col"
+          className="absolute inset-0 z-[100] bg-background flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-10 pb-3 border-b border-border">

@@ -38,9 +38,9 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
   };
 
   const features = [
-    { icon: <Zap size={18} className="text-yellow-400" />, title: "Unlimited AI Lookups" },
-    { icon: <Sparkles size={18} className="text-blue-400" />, title: "Unlock Background Removal" },
-    { icon: <Crown size={18} className="text-purple-400" />, title: "Access Global Suppliers" },
+    { icon: <Zap size={18} className="text-yellow-400" />, title: "Unlimited AI Lookups & HD Exports" },
+    { icon: <Sparkles size={18} className="text-blue-400" />, title: "Pro Tools: Shadow, Stroke & Fonts" },
+    { icon: <Crown size={18} className="text-purple-400" />, title: "Unlock Background Removal & No Watermark" },
   ];
 
   return (
@@ -51,7 +51,7 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: "100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0a] text-white overflow-hidden font-sans"
+          className="fixed inset-0 z-[100] flex flex-col bg-[#0a0a0a] text-white overflow-hidden font-sans"
         >
           {/* Animated Background Gradient */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/30 via-[#0a0a0a] to-[#0a0a0a] opacity-60 pointer-events-none" />
