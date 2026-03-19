@@ -60,7 +60,7 @@ const CanvasEditor = ({
         width: printAreaRect.w,
         height: printAreaRect.h,
         fill: "transparent",
-        stroke: showPrintArea ? "rgba(0,0,0,0.3)" : "transparent",
+        stroke: showPrintArea ? "rgba(255,255,255,0.3)" : "transparent",
         strokeWidth: 2,
         strokeDashArray: [6, 6],
         selectable: false,
@@ -72,26 +72,6 @@ const CanvasEditor = ({
         name: "printArea",
       });
       canvas.add(printArea);
-      canvas.sendToBack(printArea);
-
-      // Product color layer behind the design but inside the mockup frame
-      const existingColor = canvas.getObjects().find(o => o.name === "productColor");
-      if (existingColor) canvas.remove(existingColor);
-
-      const productColorRect = new fabric.Rect({
-        width: printAreaRect.w + 40,
-        height: printAreaRect.h + 80,
-        fill: showBg ? templateColor : "transparent",
-        selectable: false,
-        evented: false,
-        originX: "center",
-        originY: "center",
-        left: printAreaRect.x,
-        top: printAreaRect.y,
-        name: "productColor",
-      });
-      canvas.add(productColorRect);
-      canvas.sendToBack(productColorRect);
     };
 
     const setupGrid = () => {
@@ -134,13 +114,40 @@ const CanvasEditor = ({
           if (!img) return;
           const scale = Math.min(358 / (img.width || 358), 440 / (img.height || 440));
           img.scale(scale);
-          img.set({ originX: "center", originY: "center", left: 358 / 2, top: 440 / 2 });
           img.set({
+            originX: "center",
+            originY: "center",
+            left: 358 / 2,
+            top: 440 / 2,
             selectable: false,
             evented: false,
             name: "productMockup",
+            // Hide the mockup if showBg is off
+            visible: showBg,
           });
-          canvas.setOverlayImage(img, canvas.renderAll.bind(canvas));
+
+          // Add mockup as a regular object at the BOTTOM of the stack
+          canvas.add(img);
+          canvas.sendToBack(img);
+
+          // Add a color tint overlay on top of the mockup with multiply blend
+          // This covers the entire canvas so the shirt gets "dyed"
+          const colorTint = new fabric.Rect({
+            width: 358,
+            height: 440,
+            left: 0,
+            top: 0,
+            fill: templateColor,
+            selectable: false,
+            evented: false,
+            name: "colorTint",
+            globalCompositeOperation: "multiply",
+            visible: showBg && templateColor !== "#ffffff",
+          });
+          canvas.add(colorTint);
+          // Place the tint right above the mockup (index 1)
+          canvas.moveTo(colorTint, 1);
+
           callback();
         });
       };
@@ -150,6 +157,7 @@ const CanvasEditor = ({
     const clampToPrintArea = (obj: fabric.Object) => {
       if (!modesRef.current.layoutMode) return;
       if (obj.name === "printArea" || (obj.name && obj.name.startsWith("gridLine"))) return;
+      if (obj.name === "productMockup" || obj.name === "colorTint" || obj.name === "productColor") return;
 
       obj.setCoords();
       let boundingRect = obj.getBoundingRect();
