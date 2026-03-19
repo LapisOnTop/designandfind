@@ -10,7 +10,6 @@ import ScanOverlay from "@/components/ScanOverlay";
 import ResultsDrawer, { ProductResult } from "@/components/ResultsDrawer";
 import SubscriptionGate from "@/components/SubscriptionGate";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import tshirtMockup from "@/assets/tshirt-mockup.png";
 
@@ -22,13 +21,27 @@ const TEMPLATE_IMAGES: Record<string, string> = {
 
 export type CategorizedResults = Record<CategoryKey, ProductResult[]>;
 
-// Helper function to build dynamic search links based on the real product title
+// Helper to determine color name based on hex
+function getClosestColorName(hex: string): string {
+  const c = hex.toLowerCase();
+  if (c === "#ffffff") return "White";
+  if (c === "#000000") return "Black";
+  if (c === "#ef4444") return "Red";
+  if (c === "#3b82f6") return "Blue";
+  if (c === "#10b981") return "Green";
+  if (c === "#eab308") return "Yellow";
+  if (c === "#8b5cf6") return "Purple";
+  if (c === "#ec4899") return "Pink";
+  if (c === "#f97316") return "Orange";
+  return "Custom Color";
+}
+
 const generateMarketplaceLinks = (query: string, sourceImg: string): CategorizedResults => {
   const q = encodeURIComponent(query);
   const t = sourceImg;
 
   return {
-    "Visual Matches (Real)": [], // This will be populated with the *actual* edge function results
+    "Visual Matches (Real)": [],
     "Global General Marketplaces": [
       { title: `Search ${query} on Amazon`, price: "Dynamic", source: "Amazon", thumbnail: t, link: `https://www.amazon.com/s?k=${q}` },
       { title: `Search ${query} on eBay`, price: "Dynamic", source: "eBay", thumbnail: t, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
@@ -49,7 +62,7 @@ const generateMarketplaceLinks = (query: string, sourceImg: string): Categorized
       { title: `Search ${query} on ASOS (Apparel)`, price: "Dynamic", source: "ASOS", thumbnail: t, link: `https://www.asos.com/search/?q=${q}` },
     ],
     "Social & Local Commerce": [
-      { title: `Search ${query} on TikTok Shop`, price: "Dynamic", source: "TikTok Shop", thumbnail: t, link: `https://shop.tiktok.com/` }, // generic since direct query search urls rotate
+      { title: `Search ${query} on TikTok Shop`, price: "Dynamic", source: "TikTok Shop", thumbnail: t, link: `https://shop.tiktok.com/` },
       { title: `Search ${query} on Facebook Marketplace`, price: "Dynamic", source: "Facebook Marketplace", thumbnail: t, link: `https://www.facebook.com/marketplace/search/?query=${q}` },
       { title: `Search ${query} on Depop`, price: "Dynamic", source: "Depop", thumbnail: t, link: `https://www.depop.com/search/?q=${q}` },
     ],
@@ -69,7 +82,6 @@ const Studio = () => {
   const [templateColor, setTemplateColor] = useState<string>("#ef4444");
   const [showBg, setShowBg] = useState(true);
 
-  // New Design Controls
   const [layoutMode, setLayoutMode] = useState(true);
   const [showPrintArea, setShowPrintArea] = useState(true);
   const [showGrid, setShowGrid] = useState(false);
@@ -80,13 +92,11 @@ const Studio = () => {
   const templateId = searchParams.get("template");
   const customTemplate = searchParams.get("customTemplate") === "true";
 
-  // Determine background and logo
   const uploadDataUrl = localStorage.getItem("designMatchUpload");
   const customTemplateUrl = customTemplate ? localStorage.getItem("designMatchTemplate") : null;
   const backgroundUrl = customTemplateUrl || (templateId && TEMPLATE_IMAGES[templateId]) || TEMPLATE_IMAGES["tshirt"];
   const logoUrl = uploadDataUrl || undefined;
 
-  // Load saved state per view
   const savedState = (!uploadDataUrl && templateId) ? (localStorage.getItem(`designMatch_saved_${templateId}_${activeView}`) || undefined) : undefined;
 
   const handleSave = useCallback(() => {
@@ -119,17 +129,23 @@ const Studio = () => {
       if (error) throw new Error(error.message);
 
       if (!data?.results?.length) {
-        toast.info("No exact visual matches found. Try generating dynamic links or a different design.");
-        setIsSearching(false);
-        return;
+        toast.info("No exact visual matches found. Discovering generic matches instead.");
       }
 
-      const realMatches: ProductResult[] = data.results;
-      const detectedProductName = realMatches[0]?.title || "Custom Design Product";
-      const detectedThumbnail = realMatches[0]?.thumbnail || backgroundUrl || dataUrl;
+      let realMatches: ProductResult[] = data?.results || [];
 
-      const dynamicCategories = generateMarketplaceLinks(detectedProductName, detectedThumbnail);
-      dynamicCategories["Visual Matches (Real)"] = realMatches;
+      // Inject color logic
+      const colorPrefix = templateColor && templateColor !== "#ffffff" && templateColor !== "transparent"
+        ? `${getClosestColorName(templateColor)} `
+        : "";
+
+      const detectedProductName = colorPrefix + (realMatches[0]?.title || "Custom Graphic Shirt");
+
+      // Filter real matches to only include priced items
+      const pricedMatches = realMatches.filter(r => r.price && r.price.trim() !== "" && r.price.toLowerCase() !== "dynamic" && r.price !== "0");
+
+      const dynamicCategories = generateMarketplaceLinks(detectedProductName, realMatches[0]?.thumbnail || backgroundUrl || dataUrl);
+      dynamicCategories["Visual Matches (Real)"] = pricedMatches;
 
       setResults(dynamicCategories);
       setShowResults(true);
@@ -140,7 +156,7 @@ const Studio = () => {
     } finally {
       setIsSearching(false);
     }
-  }, [isSearching, backgroundUrl]);
+  }, [isSearching, backgroundUrl, templateColor]);
 
   const handleCanvasReady = useCallback(() => {
     if (autoLookup && uploadDataUrl && !isSearching) {
@@ -160,7 +176,6 @@ const Studio = () => {
     navigate("/");
   };
 
-  // --- Creative Tool Handlers ---
   const handleAddText = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -171,7 +186,7 @@ const Studio = () => {
       originY: "center",
       fontSize: 24,
       fontFamily: "Inter, sans-serif",
-      fill: "#ffffff",
+      fill: "#000000",
       fontWeight: "bold",
       cornerColor: "#000",
       cornerStrokeColor: "#fff",
@@ -220,7 +235,6 @@ const Studio = () => {
       }, { crossOrigin: "anonymous" });
     };
     reader.readAsDataURL(file);
-    // Reset so the same file can be uploaded again
     e.target.value = "";
   };
 
@@ -233,7 +247,7 @@ const Studio = () => {
       originX: "center" as const,
       originY: "center" as const,
       fill: templateColor || "#3b82f6",
-      stroke: "#ffffff",
+      stroke: "#000000",
       strokeWidth: 2,
       cornerColor: "#000",
       cornerStrokeColor: "#fff",
@@ -268,7 +282,6 @@ const Studio = () => {
     <PhoneFrame>
       <HeaderBar onLookup={handleLookup} isSearching={isSearching} onExit={handleExit} onSave={handleSave} />
 
-      {/* Hidden file input for image upload */}
       <input
         ref={fileInputRef}
         type="file"

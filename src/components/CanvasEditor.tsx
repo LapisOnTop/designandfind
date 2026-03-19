@@ -318,7 +318,7 @@ const CanvasEditor = ({
   }, [initCanvas]);
 
   return (
-    <div className={`flex-1 flex items-center justify-center overflow-hidden transition-all ${showBg ? "bg-white" : "bg-transparent"}`}>
+    <div className="flex-1 flex items-center justify-center overflow-hidden transition-all bg-transparent">
       <canvas ref={canvasElRef} className="rounded-2xl transition-all" />
     </div>
   );
