@@ -1,9 +1,10 @@
 import {
   Trash2, Crown, Copy, SquareArrowUp, SquareArrowDown,
-  AlignCenter, Droplet, Eraser, FlipHorizontal, FlipVertical,
-  RotateCw, Maximize, LayoutTemplate, Grid, Grid3X3, Shirt, Frame,
+  AlignCenter, FlipHorizontal, FlipVertical,
+  LayoutTemplate, Grid, Grid3X3, Shirt, Frame,
   Type, ImagePlus, Square, Circle, Triangle, Eye, EyeOff, Lock, Unlock,
-  PaintBucket, Type as FontIcon, BoxSelect, ChevronDown, ChevronUp
+  Type as FontIcon, BoxSelect, ChevronDown, ChevronUp, Layers,
+  Undo2, Redo2, ZoomIn, ZoomOut, Trash, X
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fabric } from "fabric";
@@ -33,16 +34,29 @@ interface BottomToolbarProps {
   onAddShape: (shape: "rect" | "circle" | "triangle") => void;
   onSubscribe: () => void;
   onRequirePro: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  zoom: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onClearAll: () => void;
+  onToggleLayers: () => void;
+  modalOpen?: boolean;
 }
 
 const FONTS = ["Inter", "Arial", "Courier New", "Georgia", "Impact", "Comic Sans MS", "Trebuchet MS", "Verdana"];
 
-const BottomToolbar = ({ canvasRef, controls, showBg, onToggleBg, onAddText, onUploadImage, onAddShape, onSubscribe, onRequirePro }: BottomToolbarProps) => {
+const BottomToolbar = ({
+  canvasRef, controls, showBg, onToggleBg, onAddText, onUploadImage, onAddShape,
+  onSubscribe, onRequirePro, onUndo, onRedo, canUndo, canRedo,
+  zoom, onZoomIn, onZoomOut, onClearAll, onToggleLayers, modalOpen
+}: BottomToolbarProps) => {
   const [hasSelection, setHasSelection] = useState(false);
   const [isText, setIsText] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Object properties state
   const [opacity, setOpacity] = useState<number>(1);
   const [angle, setAngle] = useState<number>(0);
   const [isLocked, setIsLocked] = useState(false);
@@ -57,7 +71,8 @@ const BottomToolbar = ({ canvasRef, controls, showBg, onToggleBg, onAddText, onU
 
     const updateSelection = () => {
       const activeObj = canvas.getActiveObject();
-      const hasValidSelection = !!activeObj && activeObj.name !== "printArea" && !activeObj.name?.startsWith("gridLine") && activeObj.name !== "productMockup" && activeObj.name !== "colorTint" && activeObj.name !== "productColor";
+      const systemNames = ["printArea", "productMockup", "colorTint", "productColor"];
+      const hasValidSelection = !!activeObj && !systemNames.includes(activeObj.name || "") && !activeObj.name?.startsWith("gridLine");
 
       setHasSelection(hasValidSelection);
       if (hasValidSelection && activeObj) {
@@ -68,7 +83,6 @@ const BottomToolbar = ({ canvasRef, controls, showBg, onToggleBg, onAddText, onU
         setStrokeWidth(activeObj.strokeWidth || 0);
         setStrokeColor(activeObj.stroke as string || "#000000");
         setHasShadow(!!activeObj.shadow);
-
         if (activeObj.type === "i-text" || activeObj.type === "text") {
           const textObj = activeObj as fabric.IText;
           const fIndex = FONTS.findIndex(f => f.toLowerCase() === (textObj.fontFamily || "").toLowerCase());
@@ -81,7 +95,6 @@ const BottomToolbar = ({ canvasRef, controls, showBg, onToggleBg, onAddText, onU
     canvas.on("selection:updated", updateSelection);
     canvas.on("selection:cleared", updateSelection);
     canvas.on("object:modified", updateSelection);
-
     return () => {
       canvas.off("selection:created", updateSelection);
       canvas.off("selection:updated", updateSelection);
@@ -96,298 +109,203 @@ const BottomToolbar = ({ canvasRef, controls, showBg, onToggleBg, onAddText, onU
     if (canvas && obj) fn(obj, canvas);
   };
 
-  const alignCenter = activeOp((obj, canvas) => {
-    obj.set({ left: 358 / 2, top: 440 / 2 - 20 });
-    obj.setCoords();
-    canvas.renderAll();
-  });
-
+  const alignCenter = activeOp((obj, canvas) => { obj.set({ left: 179, top: 220 }); obj.setCoords(); canvas.renderAll(); });
   const duplicate = activeOp((obj, canvas) => {
     obj.clone((cloned: fabric.Object) => {
       cloned.set({ left: (obj.left || 0) + 20, top: (obj.top || 0) + 20, name: "designLogo" });
-      canvas.add(cloned);
-      canvas.setActiveObject(cloned);
-      canvas.renderAll();
+      canvas.add(cloned); canvas.setActiveObject(cloned); canvas.renderAll();
     });
   });
-
   const bringForward = activeOp((obj, canvas) => { canvas.bringForward(obj); canvas.renderAll(); });
   const sendBackwards = activeOp((obj, canvas) => { canvas.sendBackwards(obj); canvas.renderAll(); });
   const deleteObj = activeOp((obj, canvas) => { canvas.remove(obj); canvas.discardActiveObject(); canvas.renderAll(); });
-
   const flipH = activeOp((obj, canvas) => { obj.set('flipX', !obj.flipX); canvas.renderAll(); });
   const flipV = activeOp((obj, canvas) => { obj.set('flipY', !obj.flipY); canvas.renderAll(); });
 
   const toggleLock = activeOp((obj, canvas) => {
     const lockState = !obj.lockMovementX;
-    obj.set({
-      lockMovementX: lockState,
-      lockMovementY: lockState,
-      lockRotation: lockState,
-      lockScalingX: lockState,
-      lockScalingY: lockState,
-      hasControls: !lockState,
-      borderColor: lockState ? 'red' : '#000',
-    });
-    setIsLocked(lockState);
-    canvas.renderAll();
+    obj.set({ lockMovementX: lockState, lockMovementY: lockState, lockRotation: lockState, lockScalingX: lockState, lockScalingY: lockState, hasControls: !lockState, borderColor: lockState ? 'red' : '#000' });
+    setIsLocked(lockState); canvas.renderAll();
     toast.success(lockState ? "Layer Locked" : "Layer Unlocked");
   });
 
   const handleOpacityChange = (value: number[]) => {
-    const canvas = canvasRef.current;
-    const obj = canvas?.getActiveObject();
+    const canvas = canvasRef.current; const obj = canvas?.getActiveObject();
     if (!canvas || !obj) return;
-    const next = value[0];
-    obj.set({ opacity: next });
-    setOpacity(next);
-    canvas.renderAll();
+    obj.set({ opacity: value[0] }); setOpacity(value[0]); canvas.renderAll();
   };
-
   const handleRotateChange = (value: number[]) => {
-    const canvas = canvasRef.current;
-    const obj = canvas?.getActiveObject();
+    const canvas = canvasRef.current; const obj = canvas?.getActiveObject();
     if (!canvas || !obj) return;
-    const next = value[0];
-    obj.rotate(next);
-    setAngle(next);
-    canvas.renderAll();
+    obj.rotate(value[0]); setAngle(value[0]); canvas.renderAll();
   };
-
   const handleStrokeWidthChange = (value: number[]) => {
-    const canvas = canvasRef.current;
-    const obj = canvas?.getActiveObject();
+    const canvas = canvasRef.current; const obj = canvas?.getActiveObject();
     if (!canvas || !obj) return;
-    const next = value[0];
-    obj.set({ strokeWidth: next, stroke: strokeColor });
-    setStrokeWidth(next);
-    canvas.renderAll();
+    obj.set({ strokeWidth: value[0], stroke: strokeColor }); setStrokeWidth(value[0]); canvas.renderAll();
   };
-
   const handleStrokeColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const canvas = canvasRef.current;
-    const obj = canvas?.getActiveObject();
+    const canvas = canvasRef.current; const obj = canvas?.getActiveObject();
     if (!canvas || !obj) return;
-    const color = e.target.value;
-    obj.set({ stroke: color, strokeWidth: strokeWidth > 0 ? strokeWidth : 2 });
+    obj.set({ stroke: e.target.value, strokeWidth: strokeWidth > 0 ? strokeWidth : 2 });
     if (strokeWidth === 0) setStrokeWidth(2);
-    setStrokeColor(color);
-    canvas.renderAll();
+    setStrokeColor(e.target.value); canvas.renderAll();
   };
-
   const toggleShadow = activeOp((obj, canvas) => {
-    const newShadowState = !hasShadow;
-    if (newShadowState) {
-      obj.set("shadow", new fabric.Shadow({
-        color: "rgba(0,0,0,0.5)",
-        blur: 10,
-        offsetX: 5,
-        offsetY: 5,
-      }));
-    } else {
-      obj.set("shadow", null);
-    }
-    setHasShadow(newShadowState);
-    canvas.renderAll();
+    const ns = !hasShadow;
+    obj.set("shadow", ns ? new fabric.Shadow({ color: "rgba(0,0,0,0.5)", blur: 10, offsetX: 5, offsetY: 5 }) : null);
+    setHasShadow(ns); canvas.renderAll();
   });
-
   const cycleFont = activeOp((obj, canvas) => {
     if (obj.type !== "i-text" && obj.type !== "text") return;
-    const nextIndex = (fontIndex + 1) % FONTS.length;
-    (obj as fabric.IText).set("fontFamily", FONTS[nextIndex]);
-    setFontIndex(nextIndex);
-    canvas.renderAll();
+    const ni = (fontIndex + 1) % FONTS.length;
+    (obj as fabric.IText).set("fontFamily", FONTS[ni]);
+    setFontIndex(ni); canvas.renderAll();
   });
 
-  return (
-    <div className="flex flex-col bg-background/50 backdrop-blur-3xl border-t border-foreground/10 shadow-[0_-4px_30px_rgba(0,0,0,0.1)] relative z-50 liquid-panel transition-all duration-300">
+  // Pro gate wrapper
+  const proGate = (action: () => void) => () => {
+    if (!isProUser()) { onRequirePro(); return; }
+    action();
+  };
 
-      {/* Toggle Button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-6 flex items-center justify-center bg-background/50 backdrop-blur-3xl border-t border-x border-foreground/10 rounded-t-xl text-muted-foreground hover:text-foreground"
-      >
-        {isExpanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+  if (modalOpen) return null; // Hide toolbar when modals are open
+
+  const ToolBtn = ({ onClick, icon: Icon, label, active, className }: { onClick: () => void; icon: any; label: string; active?: boolean; className?: string }) => (
+    <button onClick={onClick} className={`flex flex-col items-center gap-0.5 shrink-0 px-2 py-1 rounded-xl transition-colors cursor-pointer ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"} ${className || ""}`}>
+      <Icon size={16} />
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
+  );
+
+  const ProToolBtn = ({ onClick, icon: Icon, label, active }: { onClick: () => void; icon: any; label: string; active?: boolean }) => (
+    <div className="relative shrink-0">
+      <button onClick={proGate(onClick)} className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors cursor-pointer ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+        <Icon size={16} />
+        <span className="text-[10px] font-medium">{label}</span>
+      </button>
+      {!isProUser() && <Crown size={8} className="absolute -top-1 -right-0.5 text-yellow-500" />}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col bg-background/80 backdrop-blur-xl border-t border-foreground/10 shadow-sm relative z-50 transition-all duration-200">
+
+      {/* Chevron Toggle */}
+      <button onClick={() => setIsExpanded(!isExpanded)}
+        className="absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-5 flex items-center justify-center bg-background/80 backdrop-blur-xl border-t border-x border-foreground/10 rounded-t-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+        {isExpanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
       </button>
 
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="flex flex-col overflow-hidden"
-          >
-            {/* CREATIVE TOOLS ROW */}
-            <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth bg-foreground/5 backdrop-blur-md">
-              <button onClick={onAddText} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground liquid-button rounded-xl p-1 px-2">
-                <Type size={16} />
-                <span className="text-[10px]">Text</span>
-              </button>
-              <button onClick={onUploadImage} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground liquid-button rounded-xl p-1 px-2">
-                <ImagePlus size={16} />
-                <span className="text-[10px]">Image</span>
-              </button>
-              <div className="w-px h-6 bg-border mx-1 shrink-0" />
-              <button onClick={() => onAddShape("rect")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground liquid-button rounded-xl p-1 px-2">
-                <Square size={16} />
-                <span className="text-[10px]">Rect</span>
-              </button>
-              <button onClick={() => onAddShape("circle")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground liquid-button rounded-xl p-1 px-2">
-                <Circle size={16} />
-                <span className="text-[10px]">Circle</span>
-              </button>
-              <button onClick={() => onAddShape("triangle")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground liquid-button rounded-xl p-1 px-2">
-                <Triangle size={16} />
-                <span className="text-[10px]">Triangle</span>
-              </button>
-              <div className="w-px h-6 bg-border mx-1 shrink-0" />
-              <button onClick={onToggleBg} className={`flex flex-col items-center gap-1 shrink-0 liquid-button rounded-xl p-1 px-2 ${showBg ? "text-primary" : "text-muted-foreground"}`}>
-                {showBg ? <Eye size={16} /> : <EyeOff size={16} />}
-                <span className="text-[10px]">{showBg ? "BG On" : "BG Off"}</span>
-              </button>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex flex-col overflow-hidden">
+
+            {/* Row 1: Creative Tools + Utility */}
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-foreground/5 bg-foreground/[0.03] flex-wrap">
+              <ToolBtn onClick={onAddText} icon={Type} label="Text" />
+              <ToolBtn onClick={onUploadImage} icon={ImagePlus} label="Image" />
+              <ToolBtn onClick={() => onAddShape("rect")} icon={Square} label="Rect" />
+              <ToolBtn onClick={() => onAddShape("circle")} icon={Circle} label="Circle" />
+              <ToolBtn onClick={() => onAddShape("triangle")} icon={Triangle} label="Triangle" />
+              <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
+              <ToolBtn onClick={onToggleBg} icon={showBg ? Eye : EyeOff} label={showBg ? "BG On" : "BG Off"} active={showBg} />
+              <ToolBtn onClick={onToggleLayers} icon={Layers} label="Layers" />
+              <ToolBtn onClick={onClearAll} icon={Trash} label="Clear" />
             </div>
 
             {hasSelection ? (
               <>
-                {/* PROPERTIES ROW: Sliders & Color Pickers */}
-                <div className="flex items-center gap-6 px-4 py-3 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth">
-
-                  {/* Opacity */}
-                  <div className="flex flex-col gap-1 w-[80px] shrink-0">
-                    <span className="text-[10px] text-muted-foreground font-medium flex justify-between">Opacity <span>{Math.round(opacity * 100)}%</span></span>
+                {/* Row 2: Properties */}
+                <div className="flex items-center gap-4 px-3 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar">
+                  {/* Free: Opacity */}
+                  <div className="flex flex-col gap-0.5 w-[72px] shrink-0">
+                    <span className="text-[9px] text-muted-foreground font-medium flex justify-between">Opacity <span>{Math.round(opacity * 100)}%</span></span>
                     <StyledSlider value={[opacity]} min={0} max={1} step={0.05} onValueChange={handleOpacityChange} />
                   </div>
-
-                  {/* Rotate */}
-                  <div className="flex flex-col gap-1 w-[80px] shrink-0">
-                    <span className="text-[10px] text-muted-foreground font-medium flex justify-between">Rotate <span>{Math.round(angle)}°</span></span>
+                  {/* Free: Rotate */}
+                  <div className="flex flex-col gap-0.5 w-[72px] shrink-0">
+                    <span className="text-[9px] text-muted-foreground font-medium flex justify-between">Rotate <span>{Math.round(angle)}°</span></span>
                     <StyledSlider value={[angle]} min={-180} max={180} step={1} onValueChange={handleRotateChange} />
                   </div>
-
-                  {/* Stroke Width & Color */}
-                  <div className="relative group shrink-0">
-                    {!isProUser() && <div className="absolute inset-0 z-20 cursor-pointer" onClick={onRequirePro} />}
-                    <div className={`flex items-center gap-2 border border-foreground/10 rounded-lg p-1 ${!isProUser() ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="absolute -top-2 -right-2 bg-background rounded-full p-0.5 shadow-sm border border-border z-30">
-                        <Crown size={10} className="text-yellow-500" />
-                      </div>
-                      <div className="flex flex-col gap-1 w-[60px]">
-                        <span className="text-[10px] text-muted-foreground font-medium flex justify-between">Stroke <span>{strokeWidth}px</span></span>
+                  {/* Pro: Stroke */}
+                  <div className="relative shrink-0">
+                    {!isProUser() && <div className="absolute inset-0 z-10 cursor-pointer" onClick={onRequirePro} />}
+                    <div className="flex items-center gap-1.5 border border-foreground/10 rounded-lg p-1">
+                      {!isProUser() && <Crown size={8} className="absolute -top-1.5 -right-1.5 text-yellow-500 z-20" />}
+                      <div className="flex flex-col gap-0.5 w-[52px]">
+                        <span className="text-[9px] text-muted-foreground font-medium">Stroke</span>
                         <StyledSlider value={[strokeWidth]} min={0} max={20} step={1} onValueChange={handleStrokeWidthChange} />
                       </div>
-                      <label className="relative cursor-pointer w-6 h-6 rounded-full border border-foreground/20 overflow-hidden shrink-0 ml-1" style={{ backgroundColor: strokeColor }}>
+                      <label className="relative cursor-pointer w-5 h-5 rounded-full border border-foreground/20 overflow-hidden shrink-0" style={{ backgroundColor: strokeColor }}>
                         <input type="color" value={strokeColor} onChange={handleStrokeColorChange} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
                       </label>
                     </div>
                   </div>
-
-                  {/* Font Picker */}
+                  {/* Pro: Font */}
                   {isText && (
-                    <div className="relative group shrink-0">
-                      {!isProUser() && <div className="absolute inset-0 z-20 cursor-pointer" onClick={onRequirePro} />}
-                      <button onClick={isProUser() ? cycleFont : undefined} className={`flex items-center gap-1.5 bg-secondary/30 hover:bg-secondary/60 rounded-lg px-3 py-1.5 transition-colors border border-foreground/10 ${!isProUser() ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <div className="absolute -top-2 -right-2 bg-background rounded-full p-0.5 shadow-sm border border-border z-30">
-                          <Crown size={10} className="text-yellow-500" />
-                        </div>
-                        <FontIcon size={14} className="text-primary" />
-                        <span className="text-xs font-medium truncate max-w-[80px]">{FONTS[fontIndex]}</span>
+                    <div className="relative shrink-0">
+                      {!isProUser() && <div className="absolute inset-0 z-10 cursor-pointer" onClick={onRequirePro} />}
+                      <button onClick={isProUser() ? cycleFont : undefined} className="flex items-center gap-1 bg-secondary/30 hover:bg-secondary/60 rounded-lg px-2 py-1 transition-colors border border-foreground/10 text-xs">
+                        {!isProUser() && <Crown size={8} className="absolute -top-1.5 -right-1.5 text-yellow-500 z-20" />}
+                        <FontIcon size={12} className="text-primary" />
+                        <span className="font-medium truncate max-w-[70px]">{FONTS[fontIndex]}</span>
                       </button>
                     </div>
                   )}
-
-                  {/* Shadow Toggle */}
-                  <div className="relative group shrink-0">
-                    {!isProUser() && <div className="absolute inset-0 z-20 cursor-pointer" onClick={onRequirePro} />}
-                    <button onClick={isProUser() ? toggleShadow : undefined} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-colors border ${hasShadow ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-secondary/30 hover:bg-secondary/60 border-foreground/10 text-muted-foreground'} ${!isProUser() ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <div className="absolute -top-2 -right-2 bg-background rounded-full p-0.5 shadow-sm border border-border z-30">
-                        <Crown size={10} className="text-yellow-500" />
-                      </div>
-                      <BoxSelect size={14} />
-                      <span className="text-xs font-medium">Shadow</span>
+                  {/* Pro: Shadow */}
+                  <div className="relative shrink-0">
+                    {!isProUser() && <div className="absolute inset-0 z-10 cursor-pointer" onClick={onRequirePro} />}
+                    <button onClick={isProUser() ? toggleShadow : undefined} className={`flex items-center gap-1 rounded-lg px-2 py-1 transition-colors border text-xs ${hasShadow ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-secondary/30 border-foreground/10 text-muted-foreground'}`}>
+                      {!isProUser() && <Crown size={8} className="absolute -top-1.5 -right-1.5 text-yellow-500 z-20" />}
+                      <BoxSelect size={12} />
+                      <span className="font-medium">Shadow</span>
                     </button>
                   </div>
-
                 </div>
 
-                {/* ACTION BUTTONS ROW */}
-                <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth">
-                  <button onClick={toggleLock} className={`flex flex-col items-center gap-1 shrink-0 ${isLocked ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'}`}>
-                    {isLocked ? <Lock size={16} /> : <Unlock size={16} />}
-                    <span className="text-[10px]">{isLocked ? 'Unlock' : 'Lock'}</span>
-                  </button>
-                  <div className="w-px h-6 bg-border mx-1 shrink-0" />
-                  <button onClick={deleteObj} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-destructive shrink-0">
-                    <Trash2 size={16} />
-                    <span className="text-[10px]">Delete</span>
-                  </button>
-                  <button onClick={duplicate} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <Copy size={16} />
-                    <span className="text-[10px]">Duplicate</span>
-                  </button>
-                  <button onClick={alignCenter} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <AlignCenter size={16} />
-                    <span className="text-[10px]">Center</span>
-                  </button>
-                  <button onClick={flipH} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <FlipHorizontal size={16} />
-                    <span className="text-[10px]">Flip H</span>
-                  </button>
-                  <button onClick={flipV} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <FlipVertical size={16} />
-                    <span className="text-[10px]">Flip V</span>
-                  </button>
-                  <button onClick={bringForward} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <SquareArrowUp size={16} />
-                    <span className="text-[10px]">Forward</span>
-                  </button>
-                  <button onClick={sendBackwards} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground shrink-0">
-                    <SquareArrowDown size={16} />
-                    <span className="text-[10px]">Backward</span>
-                  </button>
+                {/* Row 3: Actions */}
+                <div className="flex items-center gap-1 px-3 py-1.5 border-b border-foreground/5 flex-wrap">
+                  <ToolBtn onClick={deleteObj} icon={Trash2} label="Delete" className="text-muted-foreground hover:text-destructive" />
+                  <ToolBtn onClick={duplicate} icon={Copy} label="Copy" />
+                  <ToolBtn onClick={alignCenter} icon={AlignCenter} label="Center" />
+                  <ProToolBtn onClick={flipH} icon={FlipHorizontal} label="Flip H" />
+                  <ProToolBtn onClick={flipV} icon={FlipVertical} label="Flip V" />
+                  <ToolBtn onClick={toggleLock} icon={isLocked ? Lock : Unlock} label={isLocked ? "Unlock" : "Lock"} active={isLocked} />
+                  <ProToolBtn onClick={bringForward} icon={SquareArrowUp} label="Up" />
+                  <ProToolBtn onClick={sendBackwards} icon={SquareArrowDown} label="Down" />
                 </div>
               </>
             ) : (
-              /* GLOBAL SETTINGS ROW (When nothing is selected) */
-              <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth">
-                <button onClick={() => controls.setActiveView(v => v === "front" ? "back" : "front")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
-                  <Shirt size={16} className={controls.activeView === "back" ? "text-primary" : ""} />
-                  <span className="text-[10px]">{controls.activeView === "front" ? "Front View" : "Back View"}</span>
-                </button>
-                <div className="w-px h-6 bg-border mx-1 shrink-0" />
-                <button onClick={() => controls.setLayoutMode(!controls.layoutMode)} className={`flex flex-col items-center gap-1 shrink-0 ${controls.layoutMode ? "text-primary" : "text-muted-foreground"}`}>
-                  <LayoutTemplate size={16} />
-                  <span className="text-[10px]">Clamp</span>
-                </button>
-                <button onClick={() => controls.setShowPrintArea(!controls.showPrintArea)} className={`flex flex-col items-center gap-1 shrink-0 ${controls.showPrintArea ? "text-primary" : "text-muted-foreground"}`}>
-                  <Frame size={16} />
-                  <span className="text-[10px]">Print Box</span>
-                </button>
-                <button onClick={() => controls.setShowGrid(!controls.showGrid)} className={`flex flex-col items-center gap-1 shrink-0 ${controls.showGrid ? "text-primary" : "text-muted-foreground"}`}>
-                  <Grid size={16} />
-                  <span className="text-[10px]">Grid</span>
-                </button>
-                <button onClick={() => controls.setSnapToGrid(!controls.snapToGrid)} className={`flex flex-col items-center gap-1 shrink-0 ${controls.snapToGrid ? "text-primary" : "text-muted-foreground"}`}>
-                  <Grid3X3 size={16} />
-                  <span className="text-[10px]">Snap</span>
-                </button>
+              /* Global Settings */
+              <div className="flex items-center gap-1 px-3 py-1.5 border-b border-foreground/5 flex-wrap">
+                <ToolBtn onClick={() => controls.setActiveView(v => v === "front" ? "back" : "front")} icon={Shirt} label={controls.activeView === "front" ? "Front" : "Back"} active={controls.activeView === "back"} />
+                <ToolBtn onClick={() => controls.setLayoutMode(!controls.layoutMode)} icon={LayoutTemplate} label="Clamp" active={controls.layoutMode} />
+                <ToolBtn onClick={() => controls.setShowPrintArea(!controls.showPrintArea)} icon={Frame} label="Print" active={controls.showPrintArea} />
+                <ToolBtn onClick={() => controls.setShowGrid(!controls.showGrid)} icon={Grid} label="Grid" active={controls.showGrid} />
+                <ToolBtn onClick={() => controls.setSnapToGrid(!controls.snapToGrid)} icon={Grid3X3} label="Snap" active={controls.snapToGrid} />
               </div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Permanently pinned upgrade button outside AnimatePresence */}
-      <div className="flex items-center justify-end px-4 py-2 border-t border-foreground/5 bg-background/5">
-        <button
-          onClick={onSubscribe}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary px-3 py-1.5 rounded-full bg-primary/5 border border-primary/40 active:scale-95 transition-transform liquid-button"
-        >
-          <Crown size={14} />
+      {/* Pinned bottom: Undo/Redo + Zoom + Pro */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-t border-foreground/5 bg-background/50">
+        <div className="flex items-center gap-1">
+          <button onClick={onUndo} disabled={!canUndo} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors cursor-pointer"><Undo2 size={14} /></button>
+          <button onClick={onRedo} disabled={!canRedo} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors cursor-pointer"><Redo2 size={14} /></button>
+          <div className="w-px h-4 bg-border mx-1" />
+          <button onClick={onZoomOut} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><ZoomOut size={14} /></button>
+          <span className="text-[10px] text-muted-foreground font-mono w-8 text-center">{Math.round(zoom * 100)}%</span>
+          <button onClick={onZoomIn} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"><ZoomIn size={14} /></button>
+        </div>
+        <button onClick={onSubscribe}
+          className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary px-2.5 py-1 rounded-full bg-primary/5 border border-primary/40 active:scale-95 transition-transform cursor-pointer">
+          <Crown size={12} />
           <span>Upgrade to Pro</span>
         </button>
       </div>
-
     </div>
   );
 };
