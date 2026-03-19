@@ -1,7 +1,8 @@
 import {
   Trash2, Crown, Copy, SquareArrowUp, SquareArrowDown,
   AlignCenter, Droplet, Eraser, FlipHorizontal, FlipVertical,
-  RotateCw, Maximize, LayoutTemplate, Grid, Grid3X3, Shirt, Frame
+  RotateCw, Maximize, LayoutTemplate, Grid, Grid3X3, Shirt, Frame,
+  Type, ImagePlus, Square, Circle, Triangle, Eye, EyeOff
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { fabric } from "fabric";
@@ -23,11 +24,16 @@ interface BottomToolbarProps {
     activeView: "front" | "back";
     setActiveView: React.Dispatch<React.SetStateAction<"front" | "back">>;
   };
+  showBg: boolean;
+  onToggleBg: () => void;
+  onAddText: () => void;
+  onUploadImage: () => void;
+  onAddShape: (shape: "rect" | "circle" | "triangle") => void;
   onSubscribe: () => void;
   onRequirePro: () => void;
 }
 
-const BottomToolbar = ({ canvasRef, controls, onSubscribe, onRequirePro }: BottomToolbarProps) => {
+const BottomToolbar = ({ canvasRef, controls, showBg, onToggleBg, onAddText, onUploadImage, onAddShape, onSubscribe, onRequirePro }: BottomToolbarProps) => {
   const [hasSelection, setHasSelection] = useState(false);
   const [opacity, setOpacity] = useState<number>(1);
 
@@ -54,17 +60,6 @@ const BottomToolbar = ({ canvasRef, controls, onSubscribe, onRequirePro }: Botto
       canvas.off("selection:cleared", updateSelection);
     };
   }, [canvasRef.current]);
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const objects = canvas.getObjects();
-    objects.forEach((obj) => {
-      if (obj.name !== "printArea" && !obj.name?.startsWith("gridLine")) canvas.remove(obj);
-    });
-    canvas.discardActiveObject();
-    canvas.renderAll();
-  };
 
   const activeOp = (fn: (obj: fabric.Object, canvas: fabric.Canvas) => void) => () => {
     const canvas = canvasRef.current;
@@ -123,8 +118,38 @@ const BottomToolbar = ({ canvasRef, controls, onSubscribe, onRequirePro }: Botto
   return (
     <div className="flex flex-col bg-background/50 backdrop-blur-3xl border-t border-foreground/10 shadow-[0_-4px_30px_rgba(0,0,0,0.1)] relative z-50">
 
-      {/* GLOBAL SETTINGS ROW */}
+      {/* CREATIVE TOOLS ROW */}
       <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth bg-foreground/5 backdrop-blur-md">
+        <button onClick={onAddText} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
+          <Type size={16} />
+          <span className="text-[10px]">Text</span>
+        </button>
+        <button onClick={onUploadImage} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
+          <ImagePlus size={16} />
+          <span className="text-[10px]">Image</span>
+        </button>
+        <div className="w-px h-6 bg-border mx-1 shrink-0" />
+        <button onClick={() => onAddShape("rect")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
+          <Square size={16} />
+          <span className="text-[10px]">Rect</span>
+        </button>
+        <button onClick={() => onAddShape("circle")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
+          <Circle size={16} />
+          <span className="text-[10px]">Circle</span>
+        </button>
+        <button onClick={() => onAddShape("triangle")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
+          <Triangle size={16} />
+          <span className="text-[10px]">Triangle</span>
+        </button>
+        <div className="w-px h-6 bg-border mx-1 shrink-0" />
+        <button onClick={onToggleBg} className={`flex flex-col items-center gap-1 shrink-0 ${showBg ? "text-primary" : "text-muted-foreground"}`}>
+          {showBg ? <Eye size={16} /> : <EyeOff size={16} />}
+          <span className="text-[10px]">{showBg ? "BG On" : "BG Off"}</span>
+        </button>
+      </div>
+
+      {/* GLOBAL SETTINGS ROW */}
+      <div className="flex items-center gap-4 px-4 py-2 overflow-x-auto border-b border-foreground/5 hide-scrollbar scroll-smooth">
         <button onClick={() => controls.setActiveView(v => v === "front" ? "back" : "front")} className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground hover:text-foreground">
           <Shirt size={16} className={controls.activeView === "back" ? "text-primary" : ""} />
           <span className="text-[10px]">{controls.activeView === "front" ? "Front View" : "Back View"}</span>

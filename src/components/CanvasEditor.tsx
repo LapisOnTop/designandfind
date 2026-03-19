@@ -6,6 +6,7 @@ interface CanvasEditorProps {
   backgroundUrl?: string;
   logoUrl?: string;
   templateColor?: string;
+  showBg?: boolean;
   savedState?: string;
   layoutMode?: boolean;
   showPrintArea?: boolean;
@@ -17,7 +18,7 @@ interface CanvasEditorProps {
 
 const CanvasEditor = ({
   canvasRef, backgroundUrl, logoUrl, templateColor = "#ffffff",
-  savedState, layoutMode = true, showPrintArea = true,
+  showBg = true, savedState, layoutMode = true, showPrintArea = true,
   showGrid = false, snapToGrid = false,
   activeView = "front", onReady
 }: CanvasEditorProps) => {
@@ -80,7 +81,7 @@ const CanvasEditor = ({
       const productColorRect = new fabric.Rect({
         width: printAreaRect.w + 40,
         height: printAreaRect.h + 80,
-        fill: templateColor,
+        fill: showBg ? templateColor : "transparent",
         selectable: false,
         evented: false,
         originX: "center",
@@ -256,7 +257,7 @@ const CanvasEditor = ({
 
     canvasRef.current = canvas;
     return () => canvas.dispose();
-  }, [canvasRef, backgroundUrl, logoUrl, templateColor, savedState, showPrintArea, showGrid, activeView]);
+  }, [canvasRef, backgroundUrl, logoUrl, templateColor, showBg, savedState, showPrintArea, showGrid, activeView]);
 
   useEffect(() => {
     const cleanup = initCanvas();

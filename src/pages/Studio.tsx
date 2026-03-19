@@ -58,6 +58,7 @@ const generateMarketplaceLinks = (query: string, sourceImg: string): Categorized
 
 const Studio = () => {
   const canvasRef = useRef<fabric.Canvas | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
@@ -66,7 +67,7 @@ const Studio = () => {
   const [searchParams] = useSearchParams();
 
   const [templateColor, setTemplateColor] = useState<string>("#ef4444");
-  const COLORS = ["#ffffff", "#1e293b", "#ef4444", "#3b82f6", "#22c55e"];
+  const [showBg, setShowBg] = useState(true);
 
   // New Design Controls
   const [layoutMode, setLayoutMode] = useState(true);
@@ -159,6 +160,102 @@ const Studio = () => {
     navigate("/");
   };
 
+  // --- Creative Tool Handlers ---
+  const handleAddText = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const text = new fabric.IText("Your Text", {
+      left: 358 / 2,
+      top: 440 / 2 - 20,
+      originX: "center",
+      originY: "center",
+      fontSize: 24,
+      fontFamily: "Inter, sans-serif",
+      fill: "#ffffff",
+      fontWeight: "bold",
+      cornerColor: "#000",
+      cornerStrokeColor: "#fff",
+      borderColor: "#000",
+      cornerSize: 10,
+      transparentCorners: false,
+      name: "userText",
+    });
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.renderAll();
+    toast.success("Text added! Double-click to edit.");
+  };
+
+  const handleUploadImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !canvasRef.current) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      fabric.Image.fromURL(dataUrl, (img) => {
+        if (!img || !canvasRef.current) return;
+        const maxSize = 120;
+        const scale = Math.min(maxSize / (img.width || maxSize), maxSize / (img.height || maxSize));
+        img.scale(scale);
+        img.set({
+          left: 358 / 2,
+          top: 440 / 2 - 20,
+          originX: "center",
+          originY: "center",
+          cornerColor: "#000",
+          cornerStrokeColor: "#fff",
+          borderColor: "#000",
+          cornerSize: 10,
+          transparentCorners: false,
+          name: "uploadedImage",
+        });
+        canvasRef.current!.add(img);
+        canvasRef.current!.setActiveObject(img);
+        canvasRef.current!.renderAll();
+        toast.success("Image added to canvas!");
+      }, { crossOrigin: "anonymous" });
+    };
+    reader.readAsDataURL(file);
+    // Reset so the same file can be uploaded again
+    e.target.value = "";
+  };
+
+  const handleAddShape = (shape: "rect" | "circle" | "triangle") => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const common = {
+      left: 358 / 2,
+      top: 440 / 2 - 20,
+      originX: "center" as const,
+      originY: "center" as const,
+      fill: templateColor || "#3b82f6",
+      stroke: "#ffffff",
+      strokeWidth: 2,
+      cornerColor: "#000",
+      cornerStrokeColor: "#fff",
+      borderColor: "#000",
+      cornerSize: 10,
+      transparentCorners: false,
+      name: "userShape",
+    };
+    let obj: fabric.Object;
+    if (shape === "rect") {
+      obj = new fabric.Rect({ ...common, width: 60, height: 60 });
+    } else if (shape === "circle") {
+      obj = new fabric.Circle({ ...common, radius: 30 });
+    } else {
+      obj = new fabric.Triangle({ ...common, width: 60, height: 60 });
+    }
+    canvas.add(obj);
+    canvas.setActiveObject(obj);
+    canvas.renderAll();
+    toast.success(`${shape.charAt(0).toUpperCase() + shape.slice(1)} added!`);
+  };
+
   const toolbarControls = {
     layoutMode, setLayoutMode,
     showPrintArea, setShowPrintArea,
@@ -171,12 +268,22 @@ const Studio = () => {
     <PhoneFrame>
       <HeaderBar onLookup={handleLookup} isSearching={isSearching} onExit={handleExit} onSave={handleSave} />
 
+      {/* Hidden file input for image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <div className="relative flex-1 flex flex-col overflow-hidden">
         <CanvasEditor
           canvasRef={canvasRef}
           backgroundUrl={backgroundUrl}
           logoUrl={activeView === "front" ? logoUrl : undefined}
           templateColor={templateColor}
+          showBg={showBg}
           savedState={savedState}
           layoutMode={layoutMode}
           showPrintArea={showPrintArea}
@@ -186,16 +293,32 @@ const Studio = () => {
           onReady={handleCanvasReady}
         />
 
-        <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center gap-4">
-          {COLORS.map((color) => (
-            <button
-              key={color}
-              onClick={() => setTemplateColor(color)}
-              className={`w-8 h-8 rounded-full border border-border shadow-md transition-all ${templateColor === color ? "ring-2 ring-primary ring-offset-2 scale-110" : "hover:scale-105"
-                }`}
-              style={{ backgroundColor: color }}
+        {/* Color Picker: White, Black, Custom */}
+        <div className="absolute bottom-6 left-0 right-0 z-10 flex justify-center items-center gap-3">
+          <button
+            onClick={() => setTemplateColor("#ffffff")}
+            className={`w-8 h-8 rounded-full border-2 shadow-md transition-all bg-white ${templateColor === "#ffffff" ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110" : "hover:scale-105 border-white/30"}`}
+          />
+          <button
+            onClick={() => setTemplateColor("#000000")}
+            className={`w-8 h-8 rounded-full border-2 shadow-md transition-all bg-black ${templateColor === "#000000" ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110" : "hover:scale-105 border-white/30"}`}
+          />
+          <label className="relative cursor-pointer group">
+            <div
+              className={`w-8 h-8 rounded-full border-2 shadow-md transition-all overflow-hidden ${templateColor !== "#ffffff" && templateColor !== "#000000" ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110" : "hover:scale-105 border-white/30"}`}
+              style={{
+                background: templateColor !== "#ffffff" && templateColor !== "#000000"
+                  ? templateColor
+                  : "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)",
+              }}
             />
-          ))}
+            <input
+              type="color"
+              value={templateColor}
+              onChange={(e) => setTemplateColor(e.target.value)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </label>
         </div>
 
         <AnimatePresence>
@@ -217,6 +340,11 @@ const Studio = () => {
       <BottomToolbar
         canvasRef={canvasRef}
         controls={toolbarControls}
+        showBg={showBg}
+        onToggleBg={() => setShowBg(!showBg)}
+        onAddText={handleAddText}
+        onUploadImage={handleUploadImage}
+        onAddShape={handleAddShape}
         onSubscribe={() => setShowSubscription(true)}
         onRequirePro={() => setShowSubscription(true)}
       />
