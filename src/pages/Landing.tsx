@@ -1,12 +1,14 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Upload, PencilRuler, X, Home, User } from "lucide-react";
+import { Search, Upload, PencilRuler, X, Home, User, Sparkles, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PhoneFrame from "@/components/PhoneFrame";
 import { useAuth } from "@/contexts/AuthContext";
 import { isProUser } from "@/services/proService";
 import ResultsDrawer, { ProductResult } from "@/components/ResultsDrawer";
 import ScanOverlay from "@/components/ScanOverlay";
+import SubscriptionGate from "@/components/SubscriptionGate";
+import AutoAddDesign from "@/components/AutoAddDesign";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -51,6 +53,8 @@ const Landing = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
   const [showTemplatePrompt, setShowTemplatePrompt] = useState(false);
+  const [showAutoAdd, setShowAutoAdd] = useState(false);
+  const [showSubscription, setShowSubscription] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "account">("home");
 
   // SERP direct lookup state
@@ -107,6 +111,15 @@ const Landing = () => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleAutoAddClick = () => {
+    if (!isProUser()) {
+      setShowSubscription(true);
+      return;
+    }
+    setShowTemplatePrompt(false);
+    setShowAutoAdd(true);
   };
 
   return (
@@ -217,6 +230,11 @@ const Landing = () => {
                     <a href="https://www.freepik.com/app" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Freepik</a>.
                   </p>
                   <div className="flex flex-col gap-3">
+                    <button onClick={handleAutoAddClick}
+                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+                      <Sparkles size={16} /> Auto-Add Design
+                      {!isProUser() && <Crown size={12} className="text-yellow-400" />}
+                    </button>
                     <button onClick={() => { setShowTemplatePrompt(false); navigate("/studio?template=tshirt"); }}
                       className="w-full py-3.5 rounded-2xl bg-white text-black font-bold active:scale-[0.98] transition-all">
                       Use Default Template
@@ -245,9 +263,17 @@ const Landing = () => {
 
         {/* Results Drawer for direct upload lookup */}
         <ResultsDrawer open={showResults} onClose={() => setShowResults(false)} results={results} />
+
+        {/* Auto-Add Design Modal */}
+        <AutoAddDesign open={showAutoAdd} onClose={() => setShowAutoAdd(false)} />
+
+        {/* Subscription Gate */}
+        <SubscriptionGate open={showSubscription} onClose={() => setShowSubscription(false)} />
       </div>
     </PhoneFrame>
   );
 };
+
+export default Landing;
 
 export default Landing;

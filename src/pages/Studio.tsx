@@ -16,7 +16,14 @@ import tshirtMockup from "@/assets/tshirt-mockup.png";
 
 type CategoryKey = "Visual Matches (Real)" | "Global General Marketplaces" | "Regional Powerhouses" | "Specialized & Niche Stores" | "Social & Local Commerce";
 
-const TEMPLATE_IMAGES: Record<string, string> = { tshirt: tshirtMockup };
+const TEMPLATE_IMAGES: Record<string, string> = {
+  tshirt: tshirtMockup,
+  jersey: tshirtMockup, // Placeholder for demo
+  hoodie: tshirtMockup, // Placeholder for demo
+  jacket: tshirtMockup, // Placeholder for demo
+  cap: tshirtMockup,    // Placeholder for demo
+  pants: tshirtMockup,   // Placeholder for demo
+};
 
 export type CategorizedResults = Record<CategoryKey, ProductResult[]>;
 
@@ -209,11 +216,48 @@ const Studio = () => {
   }, [isSearching, backgroundUrl, templateColor]);
 
   const handleCanvasReady = useCallback(() => {
+    const autoAdd = searchParams.get("autoAdd") === "true";
+
+    // Check for autoLookup (Upload Design flow)
     if (autoLookup && uploadDataUrl && !isSearching) {
       handleLookup();
       localStorage.removeItem("designMatchUpload");
     }
-  }, [autoLookup, uploadDataUrl, isSearching, handleLookup]);
+
+    // Check for autoAdd (Pro Auto-Add Design flow)
+    if (autoAdd && uploadDataUrl && canvasRef.current) {
+      fabric.Image.fromURL(uploadDataUrl, (img) => {
+        if (!img || !canvasRef.current) return;
+
+        // Auto-scale to fit nicely in print area (approx 150px wide/high)
+        const scale = Math.min(150 / (img.width || 1), 150 / (img.height || 1));
+        img.scale(scale);
+
+        img.set({
+          left: 179, // Matches CENTER_X in CanvasEditor
+          top: 220,  // Matches CENTER_Y in CanvasEditor
+          originX: "center",
+          originY: "center",
+          name: "userDesign",
+          cornerColor: "#000",
+          cornerStrokeColor: "#fff",
+          borderColor: "#000",
+          transparentCorners: false,
+          cornerSize: 10,
+        });
+
+        canvasRef.current.add(img);
+        canvasRef.current.setActiveObject(img);
+        canvasRef.current.renderAll();
+
+        // Cleanup
+        localStorage.removeItem("designMatchUpload");
+        localStorage.removeItem("designMatchAutoTemplate");
+        localStorage.removeItem("designMatchAutoDescription");
+        toast.info("AI: Design placed on template");
+      }, { crossOrigin: "anonymous" });
+    }
+  }, [autoLookup, uploadDataUrl, isSearching, handleLookup, searchParams]);
 
   useEffect(() => {
     if (localStorage.getItem("designMatch_showProAfterLogin") === "true") {
