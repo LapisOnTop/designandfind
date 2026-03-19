@@ -16,6 +16,41 @@ interface CanvasEditorProps {
   onReady?: () => void;
 }
 
+const trimCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const l = pixels.data.length;
+  let bound = { top: null as number | null, left: null as number | null, right: null as number | null, bottom: null as number | null };
+
+  for (let i = 0; i < l; i += 4) {
+    if (pixels.data[i + 3] !== 0) {
+      const x = (i / 4) % canvas.width;
+      const y = ~~((i / 4) / canvas.width);
+
+      if (bound.top === null) bound.top = y;
+      if (bound.left === null || x < bound.left) bound.left = x;
+      if (bound.right === null || x > bound.right) bound.right = x;
+      if (bound.bottom === null || y > bound.bottom) bound.bottom = y;
+    }
+  }
+
+  if (bound.top === null || bound.left === null || bound.right === null || bound.bottom === null) {
+    return canvas;
+  }
+
+  const trimHeight = bound.bottom - bound.top + 1;
+  const trimWidth = bound.right - bound.left + 1;
+  const trimmed = document.createElement('canvas');
+  trimmed.width = trimWidth;
+  trimmed.height = trimHeight;
+  trimmed.getContext('2d')?.putImageData(
+    ctx.getImageData(bound.left, bound.top, trimWidth, trimHeight),
+    0, 0
+  );
+  return trimmed;
+};
+
 const CanvasEditor = ({
   canvasRef, backgroundUrl, logoUrl, templateColor = "#ffffff",
   showBg = true, savedState, layoutMode = true, showPrintArea = true,
@@ -30,13 +65,20 @@ const CanvasEditor = ({
     modesRef.current = { layoutMode, snapToGrid };
   }, [layoutMode, snapToGrid]);
 
+  useEffect(() => {
+    if (canvasRef.current) {
+      canvasRef.current.backgroundColor = showBg ? "#ffffff" : "transparent";
+      canvasRef.current.renderAll();
+    }
+  }, [showBg]);
+
   const initCanvas = useCallback(() => {
     if (!canvasElRef.current) return;
 
     const canvas = new fabric.Canvas(canvasElRef.current, {
       width: 358,
       height: 440,
-      backgroundColor: "transparent",
+      backgroundColor: showBg ? "#ffffff" : "transparent",
       preserveObjectStacking: true,
     });
 
@@ -110,7 +152,10 @@ const CanvasEditor = ({
         const ctx = tempCanvas.getContext("2d")!;
         ctx.drawImage(imgEl, cropX, 0, halfW, imgEl.height, 0, 0, halfW, imgEl.height);
 
-        fabric.Image.fromURL(tempCanvas.toDataURL(), (img) => {
+        // Trim exactly so the actual shirt pixels center exactly
+        const trimmedCanvas = trimCanvas(tempCanvas);
+
+        fabric.Image.fromURL(trimmedCanvas.toDataURL(), (img) => {
           if (!img) return;
           const scale = Math.min(358 / (img.width || 358), 440 / (img.height || 440));
           img.scale(scale);
@@ -122,8 +167,7 @@ const CanvasEditor = ({
             selectable: false,
             evented: false,
             name: "productMockup",
-            // Hide the mockup if showBg is off
-            visible: showBg,
+            visible: true, // Mockup always visible. Background is now canvas colored
           });
 
           // Add mockup as a regular object at the BOTTOM of the stack
@@ -142,7 +186,7 @@ const CanvasEditor = ({
             evented: false,
             name: "colorTint",
             globalCompositeOperation: "multiply",
-            visible: showBg && templateColor !== "#ffffff",
+            visible: templateColor !== "#ffffff",
           });
           canvas.add(colorTint);
           // Place the tint right above the mockup (index 1)
@@ -273,7 +317,7 @@ const CanvasEditor = ({
   }, [initCanvas]);
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-transparent overflow-hidden">
+    <div className={`flex-1 flex items-center justify-center overflow-hidden transition-all ${showBg ? "bg-white" : "bg-transparent"}`}>
       <canvas ref={canvasElRef} className="rounded-2xl transition-all" />
     </div>
   );
