@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mail, Lock, User } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Crown, Check } from "lucide-react";
 import { toast } from "sonner";
 import PhoneFrame from "@/components/PhoneFrame";
 import { signInWithPassword, signUpWithEmail } from "@/services/authService";
+import { isProUser } from "@/services/proService";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +16,8 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPostAuthModal, setShowPostAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo") || "/studio";
 
@@ -26,16 +30,16 @@ const Auth = () => {
         const result = await signUpWithEmail({ email, password, displayName });
 
         if (result.session && result.user) {
-          toast.success("Account created!");
-          navigate(decodeURIComponent(returnTo), { replace: true });
+          setAuthMode("signup");
+          setShowPostAuthModal(true);
         } else {
           toast.success("Account created. Please confirm your email, then sign in.");
           setMode("login");
         }
       } else {
         await signInWithPassword({ email, password });
-        toast.success("Welcome back!");
-        navigate(decodeURIComponent(returnTo), { replace: true });
+        setAuthMode("login");
+        setShowPostAuthModal(true);
       }
     } catch (err: any) {
       if (mode === "signup" && /already registered|already exists/i.test(err?.message || "")) {
@@ -48,6 +52,11 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePostAuthContinue = () => {
+    setShowPostAuthModal(false);
+    navigate(decodeURIComponent(returnTo), { replace: true });
   };
 
   return (
@@ -166,6 +175,114 @@ const Auth = () => {
             </button>
           </div>
         </motion.div>
+
+        {/* Post-Auth Modal - Pro Subscription or Pro Welcome */}
+        {showPostAuthModal && (
+          <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-[#141414] border border-[#333] rounded-[1.5rem] p-6 w-full max-w-sm"
+            >
+              {isProUser() ? (
+                /* Pro User - Welcome Back */
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto">
+                    <Crown size={32} className="text-yellow-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Welcome Back, Pro!</h2>
+                    <p className="text-sm text-[#888] mt-1">
+                      {authMode === "signup" ? "Your Pro account is ready" : "You're signed in as a Pro member"}
+                    </p>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded-xl p-4 text-left space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#888]">Plan</span>
+                      <span className="text-white font-medium">
+                        {localStorage.getItem("designMatch_plan") === "yearly" ? "Yearly Pro" : "Monthly Pro"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#888]">Next billing</span>
+                      <span className="text-white font-medium">
+                        {(() => {
+                          const plan = localStorage.getItem("designMatch_plan") || "monthly";
+                          const days = plan === "yearly" ? 365 : 30;
+                          const nextDate = new Date();
+                          nextDate.setDate(nextDate.getDate() + days);
+                          return nextDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#888]">Status</span>
+                      <span className="text-green-400 font-medium flex items-center gap-1">
+                        <Check size={14} /> Active
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handlePostAuthContinue}
+                    className="w-full py-3 rounded-xl bg-yellow-500 text-black text-sm font-semibold active:scale-[0.98] transition-transform"
+                  >
+                    Continue to Studio
+                  </button>
+                </div>
+              ) : (
+                /* Free User - Upgrade Prompt */
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                    <Crown size={32} className="text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white">
+                      {authMode === "signup" ? "Welcome to DesignMatch!" : "Welcome Back!"}
+                    </h2>
+                    <p className="text-sm text-[#888] mt-1">
+                      Upgrade to Pro for unlimited designs and premium features
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-[#888]">
+                      <Check size={16} className="text-primary" />
+                      <span>Unlimited designs</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#888]">
+                      <Check size={16} className="text-primary" />
+                      <span>Advanced export options</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#888]">
+                      <Check size={16} className="text-primary" />
+                      <span>Priority visual search</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-[#888]">
+                      <Check size={16} className="text-primary" />
+                      <span>No watermark</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    <button
+                      onClick={() => {
+                        localStorage.setItem("designMatch_showProAfterLogin", "true");
+                        handlePostAuthContinue();
+                      }}
+                      className="w-full py-3 rounded-xl bg-primary text-white text-sm font-semibold active:scale-[0.98] transition-transform"
+                    >
+                      Upgrade to Pro
+                    </button>
+                    <button
+                      onClick={handlePostAuthContinue}
+                      className="w-full py-3 rounded-xl bg-transparent border border-[#333] text-[#888] text-sm font-semibold active:scale-[0.98] transition-transform hover:text-white"
+                    >
+                      Continue with Free
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
       </div>
     </PhoneFrame>
   );

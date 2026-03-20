@@ -8,7 +8,6 @@ import { isProUser } from "@/services/proService";
 import ResultsDrawer, { ProductResult } from "@/components/ResultsDrawer";
 import ScanOverlay from "@/components/ScanOverlay";
 import SubscriptionGate from "@/components/SubscriptionGate";
-import AutoAddDesign from "@/components/AutoAddDesign";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -53,9 +52,7 @@ const Landing = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
   const [showTemplatePrompt, setShowTemplatePrompt] = useState(false);
-  const [showAutoAdd, setShowAutoAdd] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "account">("home");
 
   // SERP direct lookup state
   const [isSearching, setIsSearching] = useState(false);
@@ -113,97 +110,51 @@ const Landing = () => {
     }
   };
 
-  const handleAutoAddClick = () => {
-    if (!isProUser()) {
-      setShowSubscription(true);
-      return;
-    }
-    setShowTemplatePrompt(false);
-    setShowAutoAdd(true);
-  };
-
   return (
     <PhoneFrame>
       <div className="flex flex-col h-full bg-[#0a0a0a] relative overflow-hidden font-sans text-white">
 
-        {/* Animated Background */}
-        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-          <motion.div animate={{ y: [0, -20, 0], scale: [1, 1.05, 1] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-[10%] -left-[20%] w-[70%] h-[50%] rounded-full bg-primary/20 blur-[80px]" />
-          <motion.div animate={{ x: [0, 30, 0], scale: [1, 1.1, 1] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="absolute top-[40%] -right-[20%] w-[60%] h-[60%] rounded-full bg-blue-500/10 blur-[80px]" />
-        </div>
-
         {/* Main Content Area */}
-        <div className="relative z-10 flex-1 flex flex-col overflow-y-auto hide-scrollbar">
-          {activeTab === "home" ? (
-            <div className="flex-1 flex flex-col items-center justify-center px-6">
-              {/* Logo */}
-              <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-                className="flex items-center gap-2.5 mb-16">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center shadow-[0_0_25px_rgba(var(--primary),0.3)]">
-                  <Search size={22} className="text-white" />
-                </div>
-                <span className="text-[26px] font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">DesignMatch</span>
-              </motion.div>
+        <div className="relative z-10 flex-1 flex flex-col hide-scrollbar">
+          <div className="flex-1 flex flex-col px-6 py-12">
 
-              {/* CTA Buttons */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }}
-                className="w-full max-w-[300px] flex flex-col gap-3">
-                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                <input type="file" accept="image/*" className="hidden" ref={templateInputRef} onChange={handleTemplateUpload} />
-
-                <button onClick={handleUploadClick}
-                  className="relative overflow-hidden w-full group py-4 rounded-2xl font-bold text-[15px] text-white shadow-[0_0_30px_rgba(var(--primary),0.3)] active:scale-[0.98] transition-all">
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-primary background-animate" />
-                  <div className="absolute inset-[1px] bg-[#0a0a0a]/40 backdrop-blur-md rounded-2xl group-hover:bg-[#0a0a0a]/20 transition-colors" />
-                  <div className="relative z-10 flex items-center justify-center gap-2">
-                    <Upload size={18} /> Upload Design
-                  </div>
-                </button>
-
-                <button onClick={() => setShowTemplatePrompt(true)}
-                  className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-white/10">
-                  <PencilRuler size={18} className="text-white/60" /> Make Design
-                </button>
-              </motion.div>
-            </div>
-          ) : (
-            /* Account Tab */
-            <div className="flex-1 flex flex-col px-6 pt-14">
-              <h1 className="text-2xl font-bold mb-8">Account</h1>
-              <div className="space-y-4">
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <p className="text-xs text-white/40 mb-1">Email</p>
-                  <p className="text-sm font-medium">{user?.email || "Not signed in"}</p>
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-                  <p className="text-xs text-white/40 mb-1">Current Plan</p>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold ${isProUser() ? "text-primary" : "text-white/70"}`}>
-                      {isProUser() ? "Pro" : "Free"}
-                    </span>
-                    {isProUser() && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold">Active</span>}
-                  </div>
-                </div>
-                <button onClick={() => { supabase.auth.signOut(); navigate("/"); }}
-                  className="w-full py-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm active:scale-[0.98] transition-all hover:bg-red-500/20">
-                  Log Out
-                </button>
+            {/* Top Section - Logo & Title */}
+            <div className="flex flex-col items-center mt-12">
+              <div className="w-16 h-16 rounded-[1.2rem] bg-primary flex items-center justify-center mb-4">
+                <Search size={28} className="text-white" />
               </div>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">
+                DesignMatch
+              </h1>
             </div>
-          )}
+
+            {/* Bottom Section - Action Buttons */}
+            <div className="w-full flex flex-col gap-3 mt-auto pb-4">
+              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+              <input type="file" accept="image/*" className="hidden" ref={templateInputRef} onChange={handleTemplateUpload} />
+
+              <button onClick={handleUploadClick}
+                className="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                <Upload size={18} /> Upload Design
+              </button>
+
+              <button onClick={() => setShowTemplatePrompt(true)}
+                className="w-full py-3.5 rounded-xl bg-[#141414] border border-[#222] text-white font-semibold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform hover:bg-[#1a1a1a]">
+                <PencilRuler size={18} className="text-[#888]" /> Make Design
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="relative z-20 flex items-center justify-around py-3 pb-6 border-t border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl">
+        <div className="relative z-20 flex items-center justify-around py-3 pb-6 border-t border-[#222] bg-[#0a0a0a]">
           <button onClick={() => { setActiveTab("home"); setShowResults(false); }}
-            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "home" ? "text-primary" : "text-white/40"}`}>
+            className={`flex flex-col items-center gap-1 transition-colors text-primary`}>
             <Home size={20} />
             <span className="text-[10px] font-medium">Home</span>
           </button>
-          <button onClick={() => setActiveTab("account")}
-            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "account" ? "text-primary" : "text-white/40"}`}>
+          <button onClick={() => navigate("/account")}
+            className={`flex flex-col items-center gap-1 transition-colors text-[#888] hover:text-white`}>
             <User size={20} />
             <span className="text-[10px] font-medium">Account</span>
           </button>
@@ -213,37 +164,28 @@ const Landing = () => {
         <AnimatePresence>
           {showTemplatePrompt && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center px-6">
-              <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="w-full bg-[#111] backdrop-blur-3xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.5)] border border-white/10 p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-24 bg-primary/20 blur-[40px] pointer-events-none" />
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-xl font-bold text-white">Choose a template</h2>
-                    <button onClick={() => setShowTemplatePrompt(false)} className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-colors">
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <p className="text-sm text-white/50 mb-6 leading-relaxed">
-                    Use our default template or upload your own. Find templates at{" "}
-                    <a href="https://www.freepik.com/app" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Freepik</a>.
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <button onClick={handleAutoAddClick}
-                      className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary to-blue-600 text-white font-bold active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
-                      <Sparkles size={16} /> Auto-Add Design
-                      {!isProUser() && <Crown size={12} className="text-yellow-400" />}
-                    </button>
-                    <button onClick={() => { setShowTemplatePrompt(false); navigate("/studio?template=tshirt"); }}
-                      className="w-full py-3.5 rounded-2xl bg-white text-black font-bold active:scale-[0.98] transition-all">
-                      Use Default Template
-                    </button>
-                    <button onClick={() => { setShowTemplatePrompt(false); templateInputRef.current?.click(); }}
-                      className="w-full py-3.5 rounded-2xl bg-white/10 border border-white/5 text-white font-bold active:scale-[0.98] transition-all">
-                      Upload My Template
-                    </button>
-                  </div>
+              className="absolute inset-0 z-[100] bg-black/80 flex items-center justify-center px-6">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="w-full bg-[#141414] rounded-2xl border border-[#222] p-6 relative">
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-lg font-semibold text-white">Choose a template</h2>
+                  <button onClick={() => setShowTemplatePrompt(false)} className="p-1.5 rounded-full bg-[#222] text-[#888] hover:text-white transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-sm text-[#888] mb-6">
+                  Use our default template or upload your own, Disclaimer: Our template only offers an empty tshirt outline therefore if u want to use a different shirt or template of other product with a different color. Then visit <a href="https://www.freepik.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Freepik</a>!
+                </p>
+                <div className="flex flex-col gap-2.5">
+                  <button onClick={() => { setShowTemplatePrompt(false); navigate("/studio?template=tshirt"); }}
+                    className="w-full py-3 rounded-xl bg-[#222] text-white font-semibold active:scale-[0.98] transition-transform">
+                    Use Default Template
+                  </button>
+                  <button onClick={() => { setShowTemplatePrompt(false); templateInputRef.current?.click(); }}
+                    className="w-full py-3 rounded-xl bg-transparent border border-[#333] text-white font-semibold active:scale-[0.98] transition-transform">
+                    Upload My Template
+                  </button>
                 </div>
               </motion.div>
             </motion.div>
@@ -254,9 +196,9 @@ const Landing = () => {
         <AnimatePresence>
           {isSearching && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[90] bg-[#0a0a0a]/95 backdrop-blur-xl flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <p className="text-white/60 text-sm font-medium">Searching global suppliers...</p>
+              className="absolute inset-0 z-[90] bg-[#0a0a0a]/95 flex flex-col items-center justify-center gap-4">
+              <div className="w-8 h-8 border-2 border-[#333] border-t-primary rounded-full animate-spin" />
+              <p className="text-[#888] text-sm font-medium">Searching global suppliers...</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -264,16 +206,11 @@ const Landing = () => {
         {/* Results Drawer for direct upload lookup */}
         <ResultsDrawer open={showResults} onClose={() => setShowResults(false)} results={results} />
 
-        {/* Auto-Add Design Modal */}
-        <AutoAddDesign open={showAutoAdd} onClose={() => setShowAutoAdd(false)} />
-
         {/* Subscription Gate */}
         <SubscriptionGate open={showSubscription} onClose={() => setShowSubscription(false)} />
       </div>
     </PhoneFrame>
   );
 };
-
-export default Landing;
 
 export default Landing;

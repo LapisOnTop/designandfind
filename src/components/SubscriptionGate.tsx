@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Crown, Check, CreditCard, Sparkles, Zap, ShieldCheck, ArrowRight, Palette, Type as TypeIcon, Layers, Download, Image } from "lucide-react";
-import { toast } from "sonner";
+import { X, Crown, Palette, Type as TypeIcon, Layers, Download, Image, Zap } from "lucide-react";
 
 interface SubscriptionGateProps {
   open: boolean;
@@ -11,15 +10,11 @@ interface SubscriptionGateProps {
 const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
   const [showClose, setShowClose] = useState(false);
   const [activated, setActivated] = useState(() => localStorage.getItem("pro_sub") === "true");
-  const [view, setView] = useState<"PAYWALL" | "CHECKOUT">("PAYWALL");
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "gcash">("gcash");
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (open) {
       setShowClose(false);
-      setView("PAYWALL");
       const timer = setTimeout(() => setShowClose(true), 2000);
       return () => clearTimeout(timer);
     }
@@ -31,153 +26,110 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
       localStorage.setItem("pro_sub", "true");
       setActivated(true);
       setIsProcessing(false);
-      toast.success("Welcome to Pro! 🎉");
       setTimeout(onClose, 1500);
-    }, 2000);
+    }, 1500);
   };
 
-  const price = selectedPlan === "monthly" ? "₱500" : "₱2,600";
-
   const features = [
-    { icon: <Palette size={16} className="text-blue-400" />, title: "Advanced Stroke & Color Tools" },
-    { icon: <TypeIcon size={16} className="text-green-400" />, title: "Premium Font Picker" },
-    { icon: <Sparkles size={16} className="text-yellow-400" />, title: "Drop Shadow & Effects" },
-    { icon: <Layers size={16} className="text-purple-400" />, title: "Layer Ordering & Flip Controls" },
-    { icon: <Download size={16} className="text-cyan-400" />, title: "4K High-Res Export, No Watermark" },
-    { icon: <Image size={16} className="text-pink-400" />, title: "Auto-Add Design (AI Placement)" },
-    { icon: <Zap size={16} className="text-orange-400" />, title: "Unlimited AI Lookups" },
+    { icon: <Palette size={16} className="text-primary" />, title: "Advanced Stroke & Color" },
+    { icon: <TypeIcon size={16} className="text-primary" />, title: "Premium Fonts" },
+    { icon: <Layers size={16} className="text-primary" />, title: "Layer Ordering" },
+    { icon: <Download size={16} className="text-primary" />, title: "High-Res Export without Watermarks" },
+    { icon: <Zap size={16} className="text-primary" />, title: "Unlimited Lookups" },
   ];
 
   return (
     <AnimatePresence>
       {open && (
-        <motion.div initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed inset-0 z-[100] flex flex-col bg-[#0a0a0a] text-white overflow-hidden font-sans">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+          className="absolute inset-0 z-[100] flex items-center justify-center p-6 bg-black/80">
 
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/30 via-[#0a0a0a] to-[#0a0a0a] opacity-60 pointer-events-none" />
-
-          {/* Header */}
-          <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-3">
-            <div />
-            <AnimatePresence>
-              {showClose && (
-                <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  onClick={onClose} className="p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md transition-colors cursor-pointer">
-                  <X size={18} />
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="relative z-10 flex-1 overflow-y-auto px-6 pb-24 flex flex-col hide-scrollbar">
-            {activated ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6">
-                  <Crown size={40} className="text-primary" />
-                </motion.div>
-                <h2 className="text-2xl font-bold mb-2">You're a Pro!</h2>
-                <p className="text-white/60">All premium features are now unlocked.</p>
-              </div>
-            ) : view === "PAYWALL" ? (
-              <div className="flex flex-col flex-1 pb-6">
-                <div className="flex-1 flex flex-col justify-center gap-6">
-                  {/* Title */}
-                  <div className="text-center space-y-2 relative">
-                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                      className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-primary/20 blur-3xl rounded-full" />
-                    <h1 className="text-3xl font-extrabold tracking-tight relative">
-                      DesignMatch <span className="text-primary">PRO</span>
-                    </h1>
-                    <p className="text-white/60 text-sm">Unlock all pro design tools.</p>
-                  </div>
-
-                  {/* Features */}
-                  <div className="space-y-3 bg-white/5 border border-white/10 p-5 rounded-2xl">
-                    {features.map((f, i) => (
-                      <motion.div initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                        key={f.title} className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-white/10">{f.icon}</div>
-                        <span className="text-sm text-white/90">{f.title}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* Pricing Toggle */}
-                  <div className="space-y-3">
-                    <button onClick={() => setSelectedPlan("yearly")}
-                      className={`w-full p-4 rounded-2xl border transition-all text-left relative ${selectedPlan === "yearly" ? "border-primary bg-primary/10" : "border-white/10 bg-white/5"}`}>
-                      <div className="absolute -top-2.5 right-3 bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                        🔥 Save ₱3,400
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black">₱2,600</span>
-                        <span className="text-white/50 text-sm">/year</span>
-                      </div>
-                      <p className="text-[11px] text-white/40 mt-1">₱216/mo — Best Value</p>
-                    </button>
-                    <button onClick={() => setSelectedPlan("monthly")}
-                      className={`w-full p-4 rounded-2xl border transition-all text-left ${selectedPlan === "monthly" ? "border-primary bg-primary/10" : "border-white/10 bg-white/5"}`}>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black">₱500</span>
-                        <span className="text-white/50 text-sm">/month</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                <motion.button whileTap={{ scale: 0.96 }} onClick={() => setView("CHECKOUT")}
-                  className="w-full py-4 mt-6 rounded-2xl bg-primary text-primary-foreground text-lg font-bold shadow-[0_0_40px_rgba(var(--primary),0.4)] flex items-center justify-center gap-2 cursor-pointer lookup-pulse">
-                  Continue <ArrowRight size={20} />
-                </motion.button>
-              </div>
-            ) : (
-              <div className="flex flex-col flex-1">
-                <button onClick={() => setView("PAYWALL")} className="text-white/50 text-sm mb-6 flex items-center gap-1 w-fit cursor-pointer">
-                  <ArrowRight size={14} className="rotate-180" /> Back
-                </button>
-
-                <h2 className="text-xl font-bold mb-4">Select Payment</h2>
-                <p className="text-sm text-white/40 mb-4">Plan: <span className="text-white font-semibold">{price}/{selectedPlan === "monthly" ? "mo" : "yr"}</span></p>
-
-                <div className="space-y-3 mb-6">
-                  {[
-                    { id: "gcash", title: "GCash", icon: <span className="font-bold text-[#007DFE]">G</span> },
-                    { id: "card", title: "Credit / Debit Card", icon: <CreditCard size={18} /> },
-                  ].map((m) => (
-                    <div key={m.id} onClick={() => setPaymentMethod(m.id as any)}
-                      className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer ${paymentMethod === m.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5"}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-white ${paymentMethod === m.id ? "text-primary" : "text-black"}`}>{m.icon}</div>
-                        <span className="font-medium">{m.title}</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === m.id ? "border-primary" : "border-white/30"}`}>
-                        {paymentMethod === m.id && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {paymentMethod === "card" && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3 mb-6">
-                    <input type="text" placeholder="Card Number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-primary transition-colors" />
-                    <div className="flex gap-3">
-                      <input type="text" placeholder="MM/YY" className="w-1/2 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-primary transition-colors" />
-                      <input type="text" placeholder="CVC" className="w-1/2 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-primary transition-colors" />
-                    </div>
-                  </motion.div>
+          <div className="w-full bg-[#141414] border border-[#222] rounded-2xl relative overflow-hidden flex flex-col max-h-full">
+            {/* Header */}
+            <div className="flex items-center justify-end p-4 pb-0 shrink-0 h-14">
+              <AnimatePresence>
+                {showClose && (
+                  <motion.button initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={onClose} className="p-1.5 rounded-lg bg-[#222] text-[#888] hover:text-white transition-colors cursor-pointer z-10">
+                    <X size={16} />
+                  </motion.button>
                 )}
+              </AnimatePresence>
+            </div>
 
-                <div className="mt-auto">
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-white/40 mb-4">
-                    <ShieldCheck size={14} /> Secured Payment
+            <div className="flex-1 overflow-y-auto px-6 pb-6 hide-scrollbar flex flex-col">
+              {activated ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
+                    <Crown size={32} className="text-primary" />
                   </div>
-                  <button onClick={handleProcessPayment} disabled={isProcessing}
-                    className="w-full py-4 rounded-2xl bg-white text-black text-lg font-bold active:scale-[0.98] transition-transform flex items-center justify-center cursor-pointer">
-                    {isProcessing ? <div className="w-6 h-6 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : `Pay ${price}`}
-                  </button>
+                  <h2 className="text-xl font-bold mb-2 text-white">You're a Pro!</h2>
+                  <p className="text-[#888] text-sm">All premium features are now unlocked.</p>
                 </div>
+              ) : (
+                <div className="flex flex-col flex-1 pb-2">
+                  <div className="flex-1 flex flex-col gap-6">
+                    {/* Title */}
+                    <div className="text-center space-y-1">
+                      <h1 className="text-2xl font-bold text-white">
+                        DesignMatch <span className="text-primary">PRO</span>
+                      </h1>
+                      <p className="text-[#888] text-sm">Unlock all pro design tools.</p>
+                    </div>
+
+                    {/* Features */}
+                    <div className="space-y-0 relative border border-[#222] rounded-xl overflow-hidden bg-[#0a0a0a]">
+                      {features.map((f, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 border-b border-[#222] last:border-b-0">
+                          <div className="w-8 h-8 rounded-lg bg-[#141414] flex items-center justify-center shrink-0">
+                            {f.icon}
+                          </div>
+                          <span className="text-sm font-medium text-white">{f.title}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      {/* Yearly Plan */}
+                      <button className="flex items-center justify-between p-3 rounded-xl border-2 border-primary bg-primary/5 text-left relative overflow-hidden group active:scale-95 transition-all">
+                        <div className="absolute top-0 right-0 bg-primary text-[10px] font-bold px-2 py-0.5 text-white rounded-bl-lg">
+                          🔥 Best Value · Save ₱3,400
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-sm">Yearly</p>
+                          <p className="text-xs text-[#888]">₱2,600 / year</p>
+                        </div>
+                        <div className="w-5 h-5 rounded-full border-4 border-primary bg-[#111]" />
+                      </button>
+
+                      {/* Monthly Plan */}
+                      <button className="flex items-center justify-between p-3 rounded-xl border border-[#333] bg-[#141414] text-left hover:border-[#444] transition-colors active:scale-95">
+                        <div>
+                          <p className="font-bold text-white text-sm">Monthly</p>
+                          <p className="text-xs text-[#888]">₱500 / month</p>
+                        </div>
+                        <div className="w-5 h-5 rounded-full border-2 border-[#444] bg-[#111]" />
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] text-center text-[#555] px-4 font-medium uppercase tracking-widest mt-2">
+                      Cancel anytime. Checkmarks below:
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer fixed */}
+            {!activated && (
+              <div className="p-6 pt-4 bg-[#141414] border-t border-[#222] shrink-0">
+                <button
+                  disabled={isProcessing}
+                  onClick={handleProcessPayment}
+                  className="w-full py-3.5 bg-primary text-white font-bold rounded-xl disabled:opacity-50 active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.4)]"
+                >
+                  {isProcessing ? "Processing..." : "Upgrade to Pro"}
+                </button>
               </div>
             )}
           </div>

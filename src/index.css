@@ -4,29 +4,6 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem;
-  }
-
-  .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
@@ -46,40 +23,37 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+    --radius: 0.75rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground transition-colors duration-300;
+    @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    color-scheme: dark;
   }
 }
 
-}
-
-/* Realistic Mobile Emulator Frame */
+/* Phone Frame */
 .phone-frame {
   width: 390px;
   height: 844px;
   border-radius: 4rem;
   border: 14px solid #1a1a1a;
   box-shadow:
-    0 0 0 2px #222,
-    0 25px 80px -10px rgba(0, 0, 0, 0.6),
-    inset 0 0 4px 2px rgba(255, 255, 255, 0.1);
+    0 0 0 2px #333,
+    0 0 0 4px #1a1a1a,
+    0 25px 80px -10px rgba(0, 0, 0, 0.7),
+    inset 0 0 4px 2px rgba(255, 255, 255, 0.08);
   overflow: hidden;
   position: relative;
   background-color: #000;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   z-index: 10;
-  transform: scale(0.95);
 }
 
 .phone-notch {
@@ -115,7 +89,6 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Hardware Buttons */
 .phone-frame::before {
   content: '';
   position: absolute;
@@ -147,8 +120,10 @@
   height: 100%;
   position: relative;
   overflow: hidden;
-  background-color: #000;
+  background-color: #0a0a0a;
   border-radius: 2.8rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .phone-home-indicator {
@@ -163,6 +138,58 @@
   z-index: 100;
 }
 
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.show-scrollbar-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+.show-scrollbar-x::-webkit-scrollbar {
+  height: 3px;
+}
+
+.show-scrollbar-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.show-scrollbar-x::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+.show-scrollbar-x::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+/* Animations */
 @layer utilities {
   .drawer-enter {
     animation: slideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
@@ -195,47 +222,22 @@
   }
 }
 
-@keyframes pulse-glow {
+@keyframes lookup-glow {
 
   0%,
   100% {
-    opacity: 0.4;
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.3);
   }
 
   50% {
-    opacity: 1;
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.6);
   }
 }
 
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.lookup-pulse {
+  animation: lookup-glow 2s ease-in-out infinite;
 }
 
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Global dark scrollbars */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Animations */
 @keyframes background-pan {
   0% {
     background-position: 0% 50%;
@@ -253,20 +255,4 @@
 .background-animate {
   background-size: 200% 200%;
   animation: background-pan 3s ease infinite;
-}
-
-@keyframes lookup-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 8px hsl(var(--primary) / 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.6);
-  }
-}
-
-.lookup-pulse {
-  animation: lookup-glow 2s ease-in-out infinite;
 }

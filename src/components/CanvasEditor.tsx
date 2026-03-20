@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { fabric } from "fabric";
+import { ZoomIn, ZoomOut } from "lucide-react";
+import { isProUser } from "../services/proService";
 
 interface CanvasEditorProps {
   canvasRef: React.MutableRefObject<fabric.Canvas | null>;
@@ -10,10 +12,10 @@ interface CanvasEditorProps {
   savedState?: string;
   layoutMode?: boolean;
   showPrintArea?: boolean;
-  showGrid?: boolean;
-  snapToGrid?: boolean;
   activeView?: "front" | "back";
   zoom?: number;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
   onReady?: () => void;
 }
 
@@ -22,47 +24,17 @@ const CANVAS_H = 440;
 const CENTER_X = CANVAS_W / 2;
 const CENTER_Y = CANVAS_H / 2;
 
-const trimCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return canvas;
-  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const l = pixels.data.length;
-  let bound = { top: null as number | null, left: null as number | null, right: null as number | null, bottom: null as number | null };
-
-  for (let i = 0; i < l; i += 4) {
-    if (pixels.data[i + 3] !== 0) {
-      const x = (i / 4) % canvas.width;
-      const y = ~~((i / 4) / canvas.width);
-      if (bound.top === null) bound.top = y;
-      if (bound.left === null || x < bound.left) bound.left = x;
-      if (bound.right === null || x > bound.right) bound.right = x;
-      if (bound.bottom === null || y > bound.bottom) bound.bottom = y;
-    }
-  }
-
-  if (bound.top === null || bound.left === null || bound.right === null || bound.bottom === null) return canvas;
-
-  const trimHeight = bound.bottom - bound.top + 1;
-  const trimWidth = bound.right - bound.left + 1;
-  const trimmed = document.createElement('canvas');
-  trimmed.width = trimWidth;
-  trimmed.height = trimHeight;
-  trimmed.getContext('2d')?.putImageData(ctx.getImageData(bound.left, bound.top, trimWidth, trimHeight), 0, 0);
-  return trimmed;
-};
-
 const CanvasEditor = ({
   canvasRef, backgroundUrl, logoUrl, templateColor = "#ffffff",
   showBg = true, savedState, layoutMode = true, showPrintArea = true,
-  showGrid = false, snapToGrid = false,
-  activeView = "front", zoom = 1, onReady
+  activeView = "front", zoom = 1, onZoomIn, onZoomOut, onReady
 }: CanvasEditorProps) => {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
-  const modesRef = useRef({ layoutMode, snapToGrid });
+  const zoomRef = useRef(zoom);
 
   useEffect(() => {
-    modesRef.current = { layoutMode, snapToGrid };
-  }, [layoutMode, snapToGrid]);
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   const initCanvas = useCallback(() => {
     if (!canvasElRef.current) return;
@@ -74,6 +46,45 @@ const CanvasEditor = ({
       preserveObjectStacking: true,
     });
 
+    // Disable scroll wheel zoom - it was resizing the template
+    // Users can use the +/- buttons instead
+    canvas.on("mouse:wheel", (opt) => {
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
+    });
+
+    // Pan with mouse drag when zoomed in
+    canvas.on("mouse:down", (opt) => {
+      const evt = opt.e;
+      // Middle mouse button or Alt+click for panning
+      if (evt.altKey === true || evt.button === 1) {
+        canvas.isDragging = true;
+        canvas.selection = false;
+        canvas.lastPosX = evt.clientX;
+        canvas.lastPosY = evt.clientY;
+      }
+    });
+
+    canvas.on("mouse:move", (opt) => {
+      if (canvas.isDragging) {
+        const e = opt.e;
+        const vpt = canvas.viewportTransform;
+        if (vpt) {
+          vpt[4] += e.clientX - canvas.lastPosX;
+          vpt[5] += e.clientY - canvas.lastPosY;
+          canvas.requestRenderAll();
+          canvas.lastPosX = e.clientX;
+          canvas.lastPosY = e.clientY;
+        }
+      }
+    });
+
+    canvas.on("mouse:up", () => {
+      canvas.setViewportTransform(canvas.viewportTransform!);
+      canvas.isDragging = false;
+      canvas.selection = true;
+    });
+
     if (savedState) {
       canvas.loadFromJSON(savedState, () => {
         canvas.renderAll();
@@ -83,37 +94,11 @@ const CanvasEditor = ({
       return () => canvas.dispose();
     }
 
-    const printAreaRect = { w: 140, h: 180, x: CENTER_X, y: CENTER_Y };
-
-    const setupPrintArea = () => {
-      const existing = canvas.getObjects().find(o => o.name === "printArea");
-      if (existing) canvas.remove(existing);
-
-      const printArea = new fabric.Rect({
-        width: printAreaRect.w, height: printAreaRect.h,
-        fill: "transparent",
-        stroke: showPrintArea ? "rgba(255,255,255,0.3)" : "transparent",
-        strokeWidth: 2, strokeDashArray: [6, 6],
-        selectable: false, evented: false,
-        originX: "center", originY: "center",
-        left: printAreaRect.x, top: printAreaRect.y,
-        name: "printArea",
-      });
-      canvas.add(printArea);
-    };
-
     const setupGrid = () => {
       const existing = canvas.getObjects().filter(o => o.name && o.name.startsWith("gridLine"));
       existing.forEach(line => canvas.remove(line));
-      if (!showGrid) return;
-      const grid = 20;
-      for (let i = 0; i < (CANVAS_W / grid); i++) {
-        canvas.add(new fabric.Line([i * grid, 0, i * grid, CANVAS_H], { stroke: '#ccc', selectable: false, evented: false, name: `gridLineV${i}` }));
-      }
-      for (let i = 0; i < (CANVAS_H / grid); i++) {
-        canvas.add(new fabric.Line([0, i * grid, CANVAS_W, i * grid], { stroke: '#ccc', selectable: false, evented: false, name: `gridLineH${i}` }));
-      }
-      canvas.getObjects().filter(o => o.name && o.name.startsWith("gridLine")).forEach(line => canvas.sendToBack(line));
+      // Grid disabled - removed showGrid check
+      return;
     };
 
     const loadBackgroundImage = (url: string, callback: () => void) => {
@@ -129,12 +114,10 @@ const CanvasEditor = ({
         const ctx = tempCanvas.getContext("2d")!;
         ctx.drawImage(imgEl, cropX, 0, halfW, imgEl.height, 0, 0, halfW, imgEl.height);
 
-        const trimmedCanvas = trimCanvas(tempCanvas);
-
-        fabric.Image.fromURL(trimmedCanvas.toDataURL(), (img) => {
+        fabric.Image.fromURL(tempCanvas.toDataURL(), (img) => {
           if (!img) return;
-          const scale = Math.min(CANVAS_W / (img.width || CANVAS_W), CANVAS_H / (img.height || CANVAS_H));
-          img.scale(scale);
+          const fitScale = Math.min(CANVAS_W / (img.width || CANVAS_W), CANVAS_H / (img.height || CANVAS_H));
+          img.scale(fitScale * 0.95);
           img.set({
             originX: "center", originY: "center",
             left: CENTER_X, top: CENTER_Y,
@@ -150,43 +133,13 @@ const CanvasEditor = ({
       imgEl.src = url;
     };
 
-    const clampToPrintArea = (obj: fabric.Object) => {
-      if (!modesRef.current.layoutMode) return;
-      if (obj.name === "printArea" || (obj.name && obj.name.startsWith("gridLine"))) return;
-      if (obj.name === "productMockup" || obj.name === "colorTint" || obj.name === "productColor") return;
-
-      obj.setCoords();
-      const boundingRect = obj.getBoundingRect();
-      const paLeft = printAreaRect.x - printAreaRect.w / 2;
-      const paRight = printAreaRect.x + printAreaRect.w / 2;
-      const paTop = printAreaRect.y - printAreaRect.h / 2;
-      const paBottom = printAreaRect.y + printAreaRect.h / 2;
-      let newLeft = obj.left || 0;
-      let newTop = obj.top || 0;
-      const originXOffset = obj.originX === 'center' ? boundingRect.width / 2 : 0;
-      const originYOffset = obj.originY === 'center' ? boundingRect.height / 2 : 0;
-
-      if (boundingRect.left < paLeft) newLeft = paLeft + originXOffset;
-      else if (boundingRect.left + boundingRect.width > paRight) newLeft = paRight - boundingRect.width + originXOffset;
-      if (boundingRect.top < paTop) newTop = paTop + originYOffset;
-      else if (boundingRect.top + boundingRect.height > paBottom) newTop = paBottom - boundingRect.height + originYOffset;
-
-      if (boundingRect.width > printAreaRect.w || boundingRect.height > printAreaRect.h) {
-        const scaleX = printAreaRect.w / (obj.width || 1);
-        const scaleY = printAreaRect.h / (obj.height || 1);
-        obj.set({ scaleX: Math.min(scaleX, scaleY), scaleY: Math.min(scaleX, scaleY) });
-      } else {
-        obj.set({ left: newLeft, top: newTop });
-      }
-    };
-
     const loadLogo = (url: string) => {
       fabric.Image.fromURL(url, (img) => {
         if (!img) return;
         const scale = Math.min(100 / (img.width || 100), 100 / (img.height || 100));
         img.scale(scale);
         img.set({
-          left: printAreaRect.x, top: printAreaRect.y,
+          left: CENTER_X, top: CENTER_Y,
           originX: "center", originY: "center",
           cornerColor: "#000", cornerStrokeColor: "#fff",
           borderColor: "#000", cornerSize: 10,
@@ -201,25 +154,13 @@ const CanvasEditor = ({
     canvas.on('object:moving', (e) => {
       const obj = e.target;
       if (!obj) return;
-      if (modesRef.current.snapToGrid) {
-        const grid = 20;
-        obj.set({ left: Math.round((obj.left || 0) / grid) * grid, top: Math.round((obj.top || 0) / grid) * grid });
-      }
-      if (!modesRef.current.snapToGrid && !modesRef.current.layoutMode) {
-        if (Math.abs((obj.left || 0) - CENTER_X) < 15) obj.set({ left: CENTER_X });
-        if (Math.abs((obj.top || 0) - CENTER_Y) < 15) obj.set({ top: CENTER_Y });
-      }
-      clampToPrintArea(obj);
-    });
-
-    canvas.on('object:scaling', (e) => {
-      if (e.target) clampToPrintArea(e.target);
+      // Snap to center guides only (removed snapToGrid)
+      if (Math.abs((obj.left || 0) - CENTER_X) < 15) obj.set({ left: CENTER_X });
+      if (Math.abs((obj.top || 0) - CENTER_Y) < 15) obj.set({ top: CENTER_Y });
     });
 
     if (backgroundUrl) {
       loadBackgroundImage(backgroundUrl, () => {
-        setupGrid();
-        setupPrintArea();
         if (logoUrl) loadLogo(logoUrl);
         if (onReady) onReady();
       });
@@ -227,7 +168,7 @@ const CanvasEditor = ({
 
     canvasRef.current = canvas;
     return () => canvas.dispose();
-  }, [backgroundUrl, logoUrl, savedState, showPrintArea, showGrid, activeView]);
+  }, [backgroundUrl, logoUrl, savedState, showPrintArea, activeView]);
 
   // Dynamic updates for templateColor and showBg
   useEffect(() => {
@@ -241,14 +182,19 @@ const CanvasEditor = ({
     if (mockup) {
       mockup.filters = [];
       if (templateColor !== "#ffffff") {
-        mockup.filters.push(new fabric.Image.filters.BlendColor({ color: templateColor, mode: "multiply", alpha: 1 }));
+        // Prevent pure black from destroying multiply blend highlights (shadows need contrast)
+        let safeColor = templateColor;
+        if (safeColor.toLowerCase() === "#000000" || safeColor.toLowerCase() === "black") {
+          safeColor = "#222222";
+        }
+        mockup.filters.push(new fabric.Image.filters.BlendColor({ color: safeColor, mode: "multiply", alpha: 1 }));
       }
       mockup.applyFilters();
 
       // Enhanced shadow for white shirts
       const isWhite = templateColor === "#ffffff";
       mockup.set("shadow", new fabric.Shadow({
-        color: isWhite ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.2)",
+        color: isWhite ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.4)",
         blur: isWhite ? 40 : 30,
         offsetX: 0,
         offsetY: isWhite ? 4 : 8
@@ -277,9 +223,35 @@ const CanvasEditor = ({
     return cleanup;
   }, [initCanvas]);
 
+  const isWhiteShirt = templateColor === "#ffffff";
+
   return (
-    <div className="flex-1 flex items-center justify-center overflow-hidden transition-all bg-transparent relative">
-      <canvas ref={canvasElRef} className="rounded-2xl transition-all" />
+    <div
+      className="flex-1 min-h-0 flex items-center justify-center overflow-hidden transition-all relative border-t border-[#222]"
+      style={{ backgroundColor: showBg ? (isWhiteShirt ? "#f0f0f0" : "#0f0f0f") : "transparent" }}
+    >
+      {/* Zoom Controls */}
+      <div className="absolute bottom-4 right-4 z-20 flex items-center bg-[#111] border border-[#222] rounded-full shadow-lg overflow-hidden">
+        <button onClick={onZoomOut} className="p-2 text-[#888] hover:text-white hover:bg-[#222] transition-colors active:scale-95">
+          <ZoomOut size={16} />
+        </button>
+        <div className="w-[1px] h-4 bg-[#333]" />
+        <span className="text-[10px] font-bold text-white px-3 tracking-widest">{Math.round(zoom * 100)}%</span>
+        <div className="w-[1px] h-4 bg-[#333]" />
+        <button onClick={onZoomIn} className="p-2 text-[#888] hover:text-white hover:bg-[#222] transition-colors active:scale-95">
+          <ZoomIn size={16} />
+        </button>
+      </div>
+
+      {/* Subtle dot grid pattern removed */}
+      <canvas ref={canvasElRef} className="rounded-lg transition-all shadow-2xl relative z-10" />
+
+      {/* Free Tier Watermark */}
+      {!isProUser() && (
+        <div className="absolute bottom-4 left-4 z-20 pointer-events-none opacity-40 select-none">
+          <p className={`text-sm font-black tracking-widest uppercase ${isWhiteShirt && showBg ? "text-black" : "text-white"}`}>designmatch</p>
+        </div>
+      )}
     </div>
   );
 };

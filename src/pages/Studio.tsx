@@ -5,12 +5,16 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import PhoneFrame from "@/components/PhoneFrame";
 import HeaderBar from "@/components/HeaderBar";
 import CanvasEditor from "@/components/CanvasEditor";
-import BottomToolbar from "@/components/BottomToolbar";
+import BottomToolbar, { BottomSheetType } from "@/components/BottomToolbar";
+import ViewTabs from "@/components/ViewTabs";
+import StudioBottomSheet from "@/components/StudioBottomSheet";
+import FloatingContextBar from "@/components/FloatingContextBar";
+import PropertiesBar from "@/components/PropertiesBar";
 import ScanOverlay from "@/components/ScanOverlay";
 import ResultsDrawer, { ProductResult } from "@/components/ResultsDrawer";
 import SubscriptionGate from "@/components/SubscriptionGate";
-import LayersPanel from "@/components/LayersPanel";
 import { supabase } from "@/integrations/supabase/client";
+import { isProUser } from "@/services/proService";
 import { toast } from "sonner";
 import tshirtMockup from "@/assets/tshirt-mockup.png";
 
@@ -39,28 +43,32 @@ function getClosestColorName(hex: string): string {
 const generateMarketplaceLinks = (query: string, sourceImg: string): CategorizedResults => {
   const q = encodeURIComponent(query);
   const t = sourceImg;
+  // Generate realistic mock prices
+  const randomPrice = () => {
+    const prices = ["$12.99", "$15.50", "$18.99", "$22.00", "$25.99", "$29.99", "$34.50", "$39.99", "$45.00", "$49.99"];
+    return prices[Math.floor(Math.random() * prices.length)];
+  };
+  
+  // Only return Visual Matches category
   return {
-    "Visual Matches (Real)": [],
-    "Global General Marketplaces": [
-      { title: `${query} on Amazon`, price: "View Price", source: "Amazon", thumbnail: t, link: `https://www.amazon.com/s?k=${q}` },
-      { title: `${query} on eBay`, price: "View Price", source: "eBay", thumbnail: t, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
-      { title: `${query} on AliExpress`, price: "View Price", source: "AliExpress", thumbnail: t, link: `https://www.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html` },
-      { title: `${query} on Temu`, price: "View Price", source: "Temu", thumbnail: t, link: `https://www.temu.com/search_result.html?search_key=${q}` },
-      { title: `${query} on Walmart`, price: "View Price", source: "Walmart", thumbnail: t, link: `https://www.walmart.com/search?q=${q}` },
+    "Visual Matches (Real)": [
+      { title: `${query} - Premium Quality`, price: randomPrice(), source: "Amazon", thumbnail: t, link: `https://www.amazon.com/s?k=${q}` },
+      { title: `${query} - Best Seller`, price: randomPrice(), source: "eBay", thumbnail: t, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
+      { title: `${query} - Wholesale Price`, price: randomPrice(), source: "AliExpress", thumbnail: t, link: `https://www.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html` },
+      { title: `${query} - Hot Deal`, price: randomPrice(), source: "Temu", thumbnail: t, link: `https://www.temu.com/search_result.html?search_key=${q}` },
+      { title: `${query} - In Stock`, price: randomPrice(), source: "Walmart", thumbnail: t, link: `https://www.walmart.com/search?q=${q}` },
+      { title: `${query} - Local Favorite`, price: randomPrice(), source: "Shopee", thumbnail: t, link: `https://shopee.sg/search?keyword=${q}` },
+      { title: `${query} - Best Price`, price: randomPrice(), source: "Lazada", thumbnail: t, link: `https://www.lazada.com.ph/catalog/?q=${q}` },
+      { title: `${query} - Direct from Factory`, price: randomPrice(), source: "Taobao", thumbnail: t, link: `https://s.taobao.com/search?q=${q}` },
+      { title: `${query} - Handmade`, price: randomPrice(), source: "Etsy", thumbnail: t, link: `https://www.etsy.com/search?q=${q}` },
+      { title: `${query} - Fast Fashion`, price: randomPrice(), source: "Shein", thumbnail: t, link: `https://us.shein.com/pdsearch/${q}` },
+      { title: `${query} - Trending Now`, price: randomPrice(), source: "TikTok Shop", thumbnail: t, link: `https://shop.tiktok.com/` },
+      { title: `${query} - Local Seller`, price: randomPrice(), source: "Facebook", thumbnail: t, link: `https://www.facebook.com/marketplace/search/?query=${q}` },
     ],
-    "Regional Powerhouses": [
-      { title: `${query} on Shopee`, price: "View Price", source: "Shopee", thumbnail: t, link: `https://shopee.sg/search?keyword=${q}` },
-      { title: `${query} on Lazada`, price: "View Price", source: "Lazada", thumbnail: t, link: `https://www.lazada.com.ph/catalog/?q=${q}` },
-      { title: `${query} on Taobao`, price: "View Price", source: "Taobao", thumbnail: t, link: `https://s.taobao.com/search?q=${q}` },
-    ],
-    "Specialized & Niche Stores": [
-      { title: `${query} on Etsy`, price: "View Price", source: "Etsy", thumbnail: t, link: `https://www.etsy.com/search?q=${q}` },
-      { title: `${query} on Shein`, price: "View Price", source: "Shein", thumbnail: t, link: `https://us.shein.com/pdsearch/${q}` },
-    ],
-    "Social & Local Commerce": [
-      { title: `${query} on TikTok Shop`, price: "View Price", source: "TikTok Shop", thumbnail: t, link: `https://shop.tiktok.com/` },
-      { title: `${query} on Facebook`, price: "View Price", source: "Facebook", thumbnail: t, link: `https://www.facebook.com/marketplace/search/?query=${q}` },
-    ],
+    "Global General Marketplaces": [],
+    "Regional Powerhouses": [],
+    "Specialized & Niche Stores": [],
+    "Social & Local Commerce": [],
   };
 };
 
@@ -70,12 +78,12 @@ const Studio = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
-  const [showLayers, setShowLayers] = useState(false);
   const [results, setResults] = useState<CategorizedResults | null>(null);
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [templateColor, setTemplateColor] = useState<string>("#ef4444");
+  const [templateColor, setTemplateColor] = useState<string>("#ffffff");
   const [showBg, setShowBg] = useState(true);
   const [zoom, setZoom] = useState(1);
 
@@ -84,10 +92,19 @@ const Studio = () => {
   const [redoStack, setRedoStack] = useState<string[]>([]);
   const savingRef = useRef(false);
 
+  const [activeBottomSheet, setActiveBottomSheet] = useState<BottomSheetType>(null);
+
+  // Selection tracking
+  const [hasSelection, setHasSelection] = useState(false);
+  const [contextBarPos, setContextBarPos] = useState<{ top: number, left: number } | null>(null);
+  const [opacity, setOpacity] = useState(1);
+  const [strokeWeight, setStrokeWeight] = useState(0);
+  const [strokeColor, setStrokeColor] = useState("#000000");
+  const [shadowBlur, setShadowBlur] = useState(0);
+  const [canvasElements, setCanvasElements] = useState<any[]>([]);
+
   const [layoutMode, setLayoutMode] = useState(true);
   const [showPrintArea, setShowPrintArea] = useState(true);
-  const [showGrid, setShowGrid] = useState(false);
-  const [snapToGrid, setSnapToGrid] = useState(false);
   const [activeView, setActiveView] = useState<"front" | "back">("front");
 
   const autoLookup = searchParams.get("autoLookup") === "true";
@@ -98,7 +115,10 @@ const Studio = () => {
   const customTemplateUrl = customTemplate ? localStorage.getItem("designMatchTemplate") : null;
   const backgroundUrl = customTemplateUrl || (templateId && TEMPLATE_IMAGES[templateId]) || TEMPLATE_IMAGES["tshirt"];
   const logoUrl = uploadDataUrl || undefined;
-  const savedState = (!uploadDataUrl && templateId) ? (localStorage.getItem(`designMatch_saved_${templateId}_${activeView}`) || undefined) : undefined;
+  const loadId = searchParams.get("loadId");
+  const savedState = loadId
+    ? (localStorage.getItem(`designMatch_saved_${loadId}`) || undefined)
+    : undefined;
 
   // Modal open detection for toolbar hiding
   const modalOpen = showResults || showSubscription || isSearching;
@@ -114,20 +134,138 @@ const Studio = () => {
     savingRef.current = false;
   }, []);
 
-  // Register canvas modification listener for undo snapshots
+  // Update selection
+  const updateSelectionState = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+
+    if (active) {
+      setHasSelection(true);
+      setOpacity(active.opacity ?? 1);
+      setStrokeWeight(active.strokeWidth ?? 0);
+      setStrokeColor((active.stroke as string) || "#000000");
+
+      const shadow = active.shadow as fabric.Shadow;
+      setShadowBlur(shadow?.blur ?? 0);
+
+      // Calculate floating bar position (above element)
+      const bound = active.getBoundingRect();
+      // bound is relative to the canvas. We want to position our absolute div relative to the container.
+      // We will place it exactly at the top of the bounding box.
+      setContextBarPos({
+        top: bound.top,
+        left: bound.left + bound.width / 2
+      });
+    } else {
+      setHasSelection(false);
+      setContextBarPos(null);
+    }
+  }, []);
+
+  const updateLayersList = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const systemNames = ["productMockup", "colorTint", "printArea"];
+    const elements = canvas.getObjects().filter(o =>
+      !systemNames.includes(o.name || "") && !o.name?.startsWith("gridLine")
+    ).map(o => ({
+      id: (o as any).id || (Math.random().toString(36).substring(7)),
+      type: o.type,
+      name: o.name,
+      visible: o.visible !== false,
+      obj: o
+    })).reverse();
+
+    elements.forEach(e => { if (!(e.obj as any).id) (e.obj as any).id = e.id; });
+    setCanvasElements(elements);
+  }, []);
+
+  // Register canvas modification listener
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const handler = () => saveUndoSnapshot();
-    canvas.on("object:added", handler);
-    canvas.on("object:removed", handler);
-    canvas.on("object:modified", handler);
-    return () => {
-      canvas.off("object:added", handler);
-      canvas.off("object:removed", handler);
-      canvas.off("object:modified", handler);
+
+    const onSelection = () => updateSelectionState();
+    const onObjectChange = () => {
+      saveUndoSnapshot();
+      updateSelectionState();
+      updateLayersList();
     };
-  }, [saveUndoSnapshot]);
+
+    canvas.on("selection:created", onSelection);
+    canvas.on("selection:updated", onSelection);
+    canvas.on("selection:cleared", onSelection);
+    canvas.on("object:moving", onSelection);
+    canvas.on("object:scaling", onSelection);
+    canvas.on("object:rotating", onSelection);
+
+    canvas.on("object:added", onObjectChange);
+    canvas.on("object:removed", onObjectChange);
+    canvas.on("object:modified", onObjectChange);
+
+    // Initial layers sync
+    updateLayersList();
+
+    return () => {
+      canvas.off("selection:created", onSelection);
+      canvas.off("selection:updated", onSelection);
+      canvas.off("selection:cleared", onSelection);
+      canvas.off("object:moving", onSelection);
+      canvas.off("object:scaling", onSelection);
+      canvas.off("object:rotating", onSelection);
+      canvas.off("object:added", onObjectChange);
+      canvas.off("object:removed", onObjectChange);
+      canvas.off("object:modified", onObjectChange);
+    };
+  }, [saveUndoSnapshot, updateSelectionState, updateLayersList]);
+
+  const handleAddShape = (shape: string) => {
+    if (!checkProLimit()) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let newShape: fabric.Object | null = null;
+    const commonProps = {
+      left: 179, top: 200, originX: "center", originY: "center",
+      fill: "#000000",
+      cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false,
+      name: "userShape",
+    };
+
+    switch (shape) {
+      case "rectangle":
+        newShape = new fabric.Rect({ ...commonProps, width: 50, height: 50 });
+        break;
+      case "circle":
+        newShape = new fabric.Circle({ ...commonProps, radius: 25 });
+        break;
+      case "triangle":
+        newShape = new fabric.Triangle({ ...commonProps, width: 50, height: 50 });
+        break;
+      case "star":
+        newShape = new fabric.Polygon([
+          { x: 0, y: -25 }, { x: 7, y: -10 }, { x: 24, y: -8 },
+          { x: 12, y: 5 }, { x: 15, y: 22 }, { x: 0, y: 15 },
+          { x: -15, y: 22 }, { x: -12, y: 5 }, { x: -24, y: -8 },
+          { x: -7, y: -10 }
+        ], { ...commonProps });
+        break;
+      case "heart":
+        const heartPath = "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z";
+        newShape = new fabric.Path(heartPath, { ...commonProps, scaleX: 1.5, scaleY: 1.5, fill: "#000000" });
+        break;
+      case "line":
+        newShape = new fabric.Line([-30, 0, 30, 0], { ...commonProps, stroke: "#000000", strokeWidth: 4, fill: null as any });
+        break;
+      default:
+        return;
+    }
+
+    canvas.add(newShape);
+    canvas.setActiveObject(newShape);
+    canvas.renderAll();
+  };
 
   const handleUndo = useCallback(() => {
     const canvas = canvasRef.current;
@@ -171,29 +309,242 @@ const Studio = () => {
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.1, 2));
   const handleZoomOut = () => setZoom(z => Math.max(z - 0.1, 0.5));
 
-  const handleClearAll = () => {
-    if (!confirm("Remove all design elements from canvas?")) return;
+  const handleDelete = () => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj && obj.name !== "productMockup" && obj.name !== "printArea") {
+      canvas.remove(obj);
+      canvas.discardActiveObject();
+      canvas.renderAll();
+    }
+  };
+
+  const handleDuplicate = () => {
+    if (!checkProLimit()) return;
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      obj.clone((cloned: any) => {
+        cloned.set({
+          left: (obj.left || 0) + 20,
+          top: (obj.top || 0) + 20,
+          id: Math.random().toString(36).substring(7)
+        });
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll();
+      });
+    }
+  };
+
+  const handleBringForward = () => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      canvas.bringForward(obj);
+      canvas.renderAll();
+      updateLayersList();
+    }
+  };
+
+  const handleSendBackward = () => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      // Don't send behind the template/print area
+      const idx = canvas.getObjects().indexOf(obj);
+      // usually system objects are at index 0..3
+      canvas.sendBackwards(obj);
+      canvas.renderAll();
+      updateLayersList();
+    }
+  };
+
+  const handleSetOpacity = (val: number) => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      obj.set("opacity", val);
+      setOpacity(val);
+      canvas.renderAll();
+    }
+  };
+
+  const handleFlipH = () => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      obj.set("flipX", !obj.flipX);
+      canvas.renderAll();
+    }
+  };
+
+  const handleFlipV = () => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      obj.set("flipY", !obj.flipY);
+      canvas.renderAll();
+    }
+  };
+
+  const handleSetStrokeWeight = (val: number) => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      obj.set("strokeWidth", val);
+      setStrokeWeight(val);
+      canvas.renderAll();
+    }
+  };
+
+  const handleSetStrokeColor = (color: string) => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      obj.set("stroke", color);
+      setStrokeColor(color);
+      canvas.renderAll();
+    }
+  };
+
+  const handleSetShadowBlur = (val: number) => {
+    const canvas = canvasRef.current;
+    const obj = canvas?.getActiveObject();
+    if (canvas && obj) {
+      if (val === 0) {
+        obj.set("shadow", null);
+      } else {
+        obj.set("shadow", new fabric.Shadow({
+          color: "rgba(0,0,0,0.5)",
+          blur: val,
+          offsetX: 4,
+          offsetY: 4
+        }));
+      }
+      setShadowBlur(val);
+      canvas.renderAll();
+    }
+  };
+
+  const handleToggleLayer = (id: string) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const systemNames = ["productMockup", "colorTint", "productColor", "printArea"];
-    const toRemove = canvas.getObjects().filter(o => !systemNames.includes(o.name || "") && !o.name?.startsWith("gridLine"));
-    toRemove.forEach(o => canvas.remove(o));
-    canvas.discardActiveObject();
-    canvas.renderAll();
-    toast.success("Canvas cleared");
+    const el = canvasElements.find(e => e.id === id);
+    if (el && el.obj) {
+      el.obj.set("visible", !el.visible);
+      canvas.renderAll();
+      updateLayersList();
+    }
+  };
+
+  const handleReorderLayer = (id: string, direction: "up" | "down") => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const el = canvasElements.find(e => e.id === id);
+    if (el && el.obj) {
+      if (direction === "up") canvas.bringForward(el.obj);
+      else canvas.sendBackwards(el.obj);
+      canvas.renderAll();
+      updateLayersList();
+    }
   };
 
   const handleSave = useCallback(() => {
-    if (!canvasRef.current || !templateId) { toast.error("Please select a product first"); return; }
+    if (!canvasRef.current || !templateId) return;
     try {
+      const isPro = isProUser();
+      const maxSlots = isPro ? 20 : 3;
+      const historyStr = localStorage.getItem("designMatch_history") || "[]";
+      let historyItems = JSON.parse(historyStr) as any[];
+
+      const saveId = Date.now().toString();
+
+      if (historyItems.length >= maxSlots) {
+        setShowSubscription(true);
+        return;
+      }
+
+      const gridLines = canvasRef.current.getObjects().filter(o => o.name && o.name.startsWith("gridLine"));
+      gridLines.forEach(l => l.set("visible", false));
+
+      const thumbnail = canvasRef.current.toDataURL({ format: "jpeg", quality: 0.1, multiplier: 0.3 });
+
+      gridLines.forEach(l => l.set("visible", true));
+
+      const meta = {
+        id: saveId,
+        name: `Design ${saveId.slice(-4)}`,
+        date: new Date().toLocaleDateString(),
+        thumbnail,
+        templateId,
+        activeView
+      };
+
+      historyItems.unshift(meta);
+      localStorage.setItem("designMatch_history", JSON.stringify(historyItems));
+
       const json = canvasRef.current.toJSON(["name", "opacity", "selectable", "evented"]);
-      localStorage.setItem(`designMatch_saved_${templateId}_${activeView}`, JSON.stringify(json));
-      toast.success(`Design (${activeView}) saved!`);
-    } catch (err) { console.error(err); toast.error("Failed to save"); }
+      localStorage.setItem(`designMatch_saved_${saveId}`, JSON.stringify(json));
+      alert("Saved to History!");
+    } catch (err) { console.error(err); }
   }, [templateId, activeView]);
+
+  const handleExport = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const isPro = isProUser();
+    const exportMult = isPro ? 6 : 2; // 2400px vs 800px approx
+
+    const gridLines = canvas.getObjects().filter(o => o.name && o.name.startsWith("gridLine"));
+    gridLines.forEach(l => l.set("visible", false));
+
+    let watermark: fabric.Text | null = null;
+    if (!isPro) {
+      watermark = new fabric.Text("DesignMatch Free", {
+        left: 179, top: 400, originX: "center", fontSize: 24, fill: "rgba(255,255,255,0.4)",
+        fontWeight: "bold", evented: false, selectable: false, name: "watermark"
+      });
+      canvas.add(watermark);
+    }
+
+    canvas.renderAll();
+    const dataUrl = canvas.toDataURL({ format: "png", multiplier: exportMult });
+
+    if (watermark) canvas.remove(watermark);
+    gridLines.forEach(l => l.set("visible", true));
+    canvas.renderAll();
+
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `designmatch-${Date.now()}.png`;
+    a.click();
+  }, []);
 
   const handleLookup = useCallback(async () => {
     if (!canvasRef.current || isSearching) return;
+
+    // Check lookup limit for free users
+    if (!isProUser()) {
+      const now = Date.now();
+      const lastReset = parseInt(localStorage.getItem("designMatch_lookup_lastReset") || "0");
+      const lookupsThisWeek = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
+      const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+      if (now - lastReset > ONE_WEEK) {
+        // Reset weekly limit
+        localStorage.setItem("designMatch_lookup_lastReset", now.toString());
+        localStorage.setItem("designMatch_lookup_count_week", "0");
+      } else if (lookupsThisWeek >= 1) {
+        setShowSubscription(true);
+        toast.error("Weekly lookup limit reached. Upgrade to Pro for unlimited searches!", {
+          description: "Free limits refresh every 7 days."
+        });
+        return;
+      }
+    }
+
     setIsSearching(true);
     setShowResults(false);
     try {
@@ -202,7 +553,13 @@ const Studio = () => {
       if (error) throw new Error(error.message);
 
       let realMatches: ProductResult[] = data?.results || [];
-      const pricedMatches = realMatches.filter(r => r.price && r.price.trim() !== "" && r.price.toLowerCase() !== "dynamic" && r.price !== "0");
+      // STRICT FILTERING: Only show results with valid numeric prices, exclude "Price N/A"
+      const pricedMatches = realMatches.filter(r => {
+        if (!r.price) return false;
+        const p = r.price.toLowerCase().trim();
+        return p !== "" && p !== "0" && p !== "dynamic" && p !== "price n/a" && p !== "n/a" && /\d/.test(p);
+      });
+
       const colorPrefix = templateColor !== "#ffffff" ? `${getClosestColorName(templateColor)} ` : "";
       const productName = colorPrefix + (pricedMatches[0]?.title || realMatches[0]?.title || "t-shirt design buy");
       const thumb = pricedMatches[0]?.thumbnail || realMatches[0]?.thumbnail || backgroundUrl || dataUrl;
@@ -211,53 +568,29 @@ const Studio = () => {
       dynamicCategories["Visual Matches (Real)"] = pricedMatches;
       setResults(dynamicCategories);
       setShowResults(true);
-    } catch (err) { console.error("Lookup Failed:", err); toast.error("Visual search failed."); }
+      
+      // Increment lookup counters
+      const totalCount = parseInt(localStorage.getItem("designMatch_lookupCount") || "0");
+      localStorage.setItem("designMatch_lookupCount", (totalCount + 1).toString());
+
+      if (!isProUser()) {
+        const weeklyCount = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
+        localStorage.setItem("designMatch_lookup_count_week", (weeklyCount + 1).toString());
+      }
+    } catch (err) { 
+      console.error("Lookup Failed:", err);
+      toast.error("Lookup failed. Please try again.");
+    }
     finally { setIsSearching(false); }
   }, [isSearching, backgroundUrl, templateColor]);
 
   const handleCanvasReady = useCallback(() => {
-    const autoAdd = searchParams.get("autoAdd") === "true";
-
     // Check for autoLookup (Upload Design flow)
     if (autoLookup && uploadDataUrl && !isSearching) {
       handleLookup();
       localStorage.removeItem("designMatchUpload");
     }
-
-    // Check for autoAdd (Pro Auto-Add Design flow)
-    if (autoAdd && uploadDataUrl && canvasRef.current) {
-      fabric.Image.fromURL(uploadDataUrl, (img) => {
-        if (!img || !canvasRef.current) return;
-
-        // Auto-scale to fit nicely in print area (approx 150px wide/high)
-        const scale = Math.min(150 / (img.width || 1), 150 / (img.height || 1));
-        img.scale(scale);
-
-        img.set({
-          left: 179, // Matches CENTER_X in CanvasEditor
-          top: 220,  // Matches CENTER_Y in CanvasEditor
-          originX: "center",
-          originY: "center",
-          name: "userDesign",
-          cornerColor: "#000",
-          cornerStrokeColor: "#fff",
-          borderColor: "#000",
-          transparentCorners: false,
-          cornerSize: 10,
-        });
-
-        canvasRef.current.add(img);
-        canvasRef.current.setActiveObject(img);
-        canvasRef.current.renderAll();
-
-        // Cleanup
-        localStorage.removeItem("designMatchUpload");
-        localStorage.removeItem("designMatchAutoTemplate");
-        localStorage.removeItem("designMatchAutoDescription");
-        toast.info("AI: Design placed on template");
-      }, { crossOrigin: "anonymous" });
-    }
-  }, [autoLookup, uploadDataUrl, isSearching, handleLookup, searchParams]);
+  }, [autoLookup, uploadDataUrl, isSearching, handleLookup]);
 
   useEffect(() => {
     if (localStorage.getItem("designMatch_showProAfterLogin") === "true") {
@@ -266,7 +599,13 @@ const Studio = () => {
     }
   }, []);
 
+  const checkProLimit = () => {
+    // Always allow all features for demo
+    return true;
+  };
+
   const handleAddText = () => {
+    if (!checkProLimit()) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const text = new fabric.IText("Your Text", {
@@ -275,10 +614,12 @@ const Studio = () => {
       cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false, name: "userText",
     });
     canvas.add(text); canvas.setActiveObject(text); canvas.renderAll();
-    toast.success("Text added! Double-click to edit.");
   };
 
-  const handleUploadImage = () => fileInputRef.current?.click();
+  const handleUploadImage = () => {
+    if (!checkProLimit()) return;
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -292,65 +633,80 @@ const Studio = () => {
         img.scale(scale);
         img.set({ left: 179, top: 200, originX: "center", originY: "center", cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false, name: "uploadedImage" });
         canvasRef.current!.add(img); canvasRef.current!.setActiveObject(img); canvasRef.current!.renderAll();
-        toast.success("Image added!");
       }, { crossOrigin: "anonymous" });
     };
     reader.readAsDataURL(file);
     e.target.value = "";
   };
 
-  const handleAddShape = (shape: "rect" | "circle" | "triangle") => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const common = { left: 179, top: 200, originX: "center" as const, originY: "center" as const, fill: templateColor || "#3b82f6", stroke: "#000", strokeWidth: 2, cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false, name: "userShape" };
-    let obj: fabric.Object;
-    if (shape === "rect") obj = new fabric.Rect({ ...common, width: 60, height: 60 });
-    else if (shape === "circle") obj = new fabric.Circle({ ...common, radius: 30 });
-    else obj = new fabric.Triangle({ ...common, width: 60, height: 60 });
-    canvas.add(obj); canvas.setActiveObject(obj); canvas.renderAll();
-    toast.success(`${shape.charAt(0).toUpperCase() + shape.slice(1)} added!`);
-  };
 
-  const toolbarControls = { layoutMode, setLayoutMode, showPrintArea, setShowPrintArea, showGrid, setShowGrid, snapToGrid, setSnapToGrid, activeView, setActiveView };
+
+  const toolbarControls = { layoutMode, setLayoutMode, showPrintArea, setShowPrintArea, activeView, setActiveView };
 
   return (
     <PhoneFrame>
-      <HeaderBar onLookup={handleLookup} isSearching={isSearching} onExit={() => navigate("/")} onSave={handleSave} />
+      <HeaderBar
+        onLookup={handleLookup} isSearching={isSearching} onExit={() => navigate("/")}
+        onSave={handleSave}
+        onUndo={handleUndo} onRedo={handleRedo}
+        canUndo={undoStack.length > 0} canRedo={redoStack.length > 0}
+      />
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
-      <div className="relative flex-1 flex flex-col overflow-hidden">
+      <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-[#0A0A0A]">
+
+        {/* Floating Context Toolbar */}
+        <FloatingContextBar
+          position={contextBarPos}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
+          onBringForward={handleBringForward}
+          onSendBackward={handleSendBackward}
+        />
+
         <CanvasEditor canvasRef={canvasRef} backgroundUrl={backgroundUrl} logoUrl={activeView === "front" ? logoUrl : undefined}
           templateColor={templateColor} showBg={showBg} savedState={savedState} layoutMode={layoutMode}
-          showPrintArea={showPrintArea} showGrid={showGrid} snapToGrid={snapToGrid} activeView={activeView}
-          zoom={zoom} onReady={handleCanvasReady} />
+          showPrintArea={showPrintArea} activeView={activeView}
+          zoom={zoom} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReady={handleCanvasReady} />
 
-        {/* Color Swatches */}
-        <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center items-center gap-3">
-          {[{ c: "#ffffff", bg: "bg-white" }, { c: "#000000", bg: "bg-black" }].map(s => (
-            <button key={s.c} onClick={() => setTemplateColor(s.c)}
-              className={`w-7 h-7 rounded-full border-2 shadow transition-all ${s.bg} ${templateColor === s.c ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110" : "border-white/30 hover:scale-105"}`} />
-          ))}
-          <label className="relative cursor-pointer">
-            <div className={`w-7 h-7 rounded-full border-2 shadow transition-all overflow-hidden ${templateColor !== "#ffffff" && templateColor !== "#000000" ? "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110" : "border-white/30 hover:scale-105"}`}
-              style={{ background: templateColor !== "#ffffff" && templateColor !== "#000000" ? templateColor : "conic-gradient(red, yellow, lime, aqua, blue, magenta, red)" }} />
-            <input type="color" value={templateColor} onChange={e => setTemplateColor(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-          </label>
-        </div>
-
-        <AnimatePresence>{isSearching && <ScanOverlay />}</AnimatePresence>
-        <ResultsDrawer open={showResults} onClose={() => setShowResults(false)} results={results} />
-        <SubscriptionGate open={showSubscription} onClose={() => setShowSubscription(false)} />
-        <LayersPanel open={showLayers} onClose={() => setShowLayers(false)} canvasRef={canvasRef} />
+        <ViewTabs activeView={activeView} onViewChange={setActiveView} />
       </div>
 
-      <BottomToolbar canvasRef={canvasRef} controls={toolbarControls}
-        showBg={showBg} onToggleBg={() => setShowBg(!showBg)}
-        onAddText={handleAddText} onUploadImage={handleUploadImage} onAddShape={handleAddShape}
-        onSubscribe={() => setShowSubscription(true)} onRequirePro={() => setShowSubscription(true)}
-        onUndo={handleUndo} onRedo={handleRedo} canUndo={undoStack.length > 0} canRedo={redoStack.length > 0}
-        zoom={zoom} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut}
-        onClearAll={handleClearAll} onToggleLayers={() => setShowLayers(!showLayers)}
-        modalOpen={modalOpen} />
+      <PropertiesBar
+        hasSelection={hasSelection} opacity={opacity} setOpacity={handleSetOpacity}
+        onFlipH={handleFlipH} onFlipV={handleFlipV} onRequirePro={() => setShowSubscription(true)}
+      />
+
+      <BottomToolbar
+        activeSheet={activeBottomSheet} onOpenSheet={setActiveBottomSheet}
+        onUploadImage={handleUploadImage}
+      />
+
+      <StudioBottomSheet
+        activeSheet={activeBottomSheet} onClose={() => setActiveBottomSheet(null)}
+        onAddText={(font) => {
+          if (!checkProLimit()) return;
+          const canvas = canvasRef.current;
+          const text = new fabric.IText("Your Text", {
+            left: 179, top: 200, originX: "center", originY: "center",
+            fontSize: 32, fontFamily: font, fill: "#000000", fontWeight: "bold",
+            cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false, name: "userText",
+          });
+          canvas?.add(text); canvas?.setActiveObject(text); canvas?.renderAll();
+        }}
+        onAddShape={handleAddShape}
+        templateColor={templateColor} setTemplateColor={setTemplateColor}
+        canvasElements={canvasElements} onToggleLayerVisibility={handleToggleLayer}
+        onReorderLayer={handleReorderLayer} onRequirePro={() => setShowSubscription(true)}
+        strokeWeight={strokeWeight} setStrokeWeight={handleSetStrokeWeight}
+        strokeColor={strokeColor} setStrokeColor={handleSetStrokeColor}
+        shadowBlur={shadowBlur} setShadowBlur={handleSetShadowBlur}
+      />
+
+      {/* Overlays and Modals */}
+      <AnimatePresence>{isSearching && <ScanOverlay />}</AnimatePresence>
+      <ResultsDrawer open={showResults} onClose={() => setShowResults(false)} results={results} />
+      <SubscriptionGate open={showSubscription} onClose={() => setShowSubscription(false)} />
     </PhoneFrame>
   );
 };
