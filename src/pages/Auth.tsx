@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Mail, Lock, User, Crown, Check } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Crown, Check, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import PhoneFrame from "@/components/PhoneFrame";
 import { signInWithPassword, signUpWithEmail } from "@/services/authService";
@@ -19,11 +19,47 @@ const Auth = () => {
   const [showPostAuthModal, setShowPostAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
+
+  // Validation and UI states
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo") || "/studio";
 
+  const validate = () => {
+    let isValid = true;
+
+    if (mode === "signup" && displayName.trim().length < 3) {
+      setNameError("Name must be at least 3 characters");
+      isValid = false;
+    } else {
+      setNameError("");
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError("Please enter a valid email address");
+      isValid = false;
+    } else {
+      setEmailError("");
+    }
+
+    if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      isValid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -104,53 +140,117 @@ const Auth = () => {
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
+                  className="flex flex-col gap-1.5"
                 >
-                  <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-3.5">
-                    <User size={18} className="text-white/25 shrink-0" />
+                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${nameError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
+                    <User size={18} className={nameError ? "text-red-400" : "text-white/25 shrink-0"} />
                     <input
                       type="text"
                       placeholder="Display name"
                       value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
+                      onChange={(e) => {
+                        setDisplayName(e.target.value);
+                        if (nameError) setNameError("");
+                      }}
                       className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
                     />
                   </div>
+                  {nameError && <span className="text-red-400 text-[12px] pl-2">{nameError}</span>}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-3.5">
-              <Mail size={18} className="text-white/25 shrink-0" />
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
-              />
+            <div className="flex flex-col gap-1.5">
+              <div className={`flex items-center gap-3 bg-white/[0.04] border ${emailError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
+                <Mail size={18} className={emailError ? "text-red-400" : "text-white/25 shrink-0"} />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError("");
+                  }}
+                  required
+                  className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
+                />
+              </div>
+              {emailError && <span className="text-red-400 text-[12px] pl-2">{emailError}</span>}
             </div>
 
-            <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-3.5">
-              <Lock size={18} className="text-white/25 shrink-0" />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
-              />
+            <div className="flex flex-col gap-1.5">
+              <div className={`flex items-center gap-3 bg-white/[0.04] border ${passwordError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                <Lock size={18} className={passwordError ? "text-red-400" : "text-white/25 shrink-0"} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError("");
+                  }}
+                  required
+                  minLength={6}
+                  className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 text-white/30 hover:text-white/60 transition-colors shrink-0"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {passwordError && <span className="text-red-400 text-[12px] pl-2">{passwordError}</span>}
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between mt-1 px-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="hidden"
+                />
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-white text-black border-white' : 'border-white/20 group-hover:border-white/40'}`}>
+                  {rememberMe && <Check size={12} />}
+                </div>
+                <span className="text-[12px] text-white/40 group-hover:text-white/60 transition-colors">Remember me</span>
+              </label>
+
+              {mode === "login" && (
+                <button type="button" className="text-[12px] text-white/40 hover:text-white/80 transition-colors">
+                  Forgot password?
+                </button>
+              )}
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 mt-4 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
+              className="w-full py-3.5 mt-2 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
             >
               {loading ? "Please wait..." : mode === "signup" ? "Sign up" : "Sign in"}
             </button>
+
+            {/* Social Logins */}
+            <div className="relative flex items-center py-4 mt-2">
+              <div className="flex-1 border-t border-white/[0.04]"></div>
+              <span className="px-3 text-[11px] text-white/30 uppercase tracking-widest">Or continue with</span>
+              <div className="flex-1 border-t border-white/[0.04]"></div>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="button" className="flex-1 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center gap-2 hover:bg-white/[0.04] transition-colors active:scale-[0.98]">
+                <svg viewBox="0 0 24 24" className="w-4 h-4"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.16v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.16C1.43 8.55 1 10.22 1 12s.43 3.45 1.16 4.93l3.68-2.84z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.16 7.07l3.68 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
+                <span className="text-[13px] text-white/70 font-medium">Google</span>
+              </button>
+              <button type="button" className="flex-1 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center gap-2 hover:bg-white/[0.04] transition-colors active:scale-[0.98]">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white/80"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.04 2.24-.86 3.46-.8 2.15.26 3.38 1.25 4.09 2.45-3.56 2.08-2.92 6.54.54 7.91-1.04 1.25-1.92 2.12-3.17 2.61zm-3.8-14.73c.75-.95 1.23-2.27 1.14-3.55-1.15.11-2.58.82-3.32 1.77-.66.82-1.19 2.15-1.05 3.44 1.34.02 2.46-.68 3.23-1.66z" /></svg>
+                <span className="text-[13px] text-white/70 font-medium">Apple</span>
+              </button>
+            </div>
           </form>
 
           {/* Toggle */}
