@@ -599,3 +599,8 @@
     border: 2px solid rgba(255, 255, 255, 0.25);
   }
 }
+
+/* Force Sonner Toaster to render inside the phone frame relatively */
+.phone-frame [data-sonner-toaster] {
+  position: absolute !important;
+}

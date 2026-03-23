@@ -230,7 +230,7 @@ const Auth = () => {
                       transition={{ duration: 0.2 }}
                       className="flex flex-col gap-1.5"
                     >
-                      <div className={`flex items-center gap-3 bg-white/[0.04] border ${nameError ? 'border-red-500/50' : (nameTouched && isNameValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
+                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${nameError ? 'border-red-500/50' : (nameTouched && isNameValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md`}>
                         <User size={18} className={nameError ? "text-red-400" : (nameTouched && isNameValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                         <input
                           type="text"
@@ -250,7 +250,7 @@ const Auth = () => {
                 </AnimatePresence>
 
                 <div className="flex flex-col gap-1.5">
-                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${emailError ? 'border-red-500/50' : (emailTouched && isEmailValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
+                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${emailError ? 'border-red-500/50' : (emailTouched && isEmailValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md`}>
                     <Mail size={18} className={emailError ? "text-red-400" : (emailTouched && isEmailValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                     <input
                       type="email"
@@ -269,7 +269,7 @@ const Auth = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${passwordError ? 'border-red-500/50' : (passwordTouched && isPasswordValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${passwordError ? 'border-red-500/50' : (passwordTouched && isPasswordValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
                     <Lock size={18} className={passwordError ? "text-red-400" : (passwordTouched && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                     <input
                       type={showPassword ? "text" : "password"}
@@ -304,7 +304,7 @@ const Auth = () => {
                       transition={{ duration: 0.2 }}
                       className="flex flex-col gap-1.5"
                     >
-                      <div className={`flex items-center gap-3 bg-white/[0.04] border ${confirmPasswordError ? 'border-red-500/50' : (confirmTouched && isConfirmValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${confirmPasswordError ? 'border-red-500/50' : (confirmTouched && isConfirmValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
                         <Lock size={18} className={confirmPasswordError ? "text-red-400" : (confirmTouched && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                         <input
                           type={showPassword ? "text" : "password"}
@@ -349,7 +349,7 @@ const Auth = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 mt-2 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
+                  className="w-full py-4 mt-2 rounded-2xl bg-white text-black text-[15px] font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] active:scale-[0.98] transition-all disabled:opacity-40 disabled:shadow-none"
                 >
                   {loading ? "Please wait..." : mode === "signup" ? "Sign up" : "Sign in"}
                 </button>
@@ -361,14 +361,12 @@ const Auth = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 onSubmit={handleVerifyCode}
-                className="flex flex-col gap-3.5"
+                className="flex flex-col gap-6 pt-2"
               >
-                <div className="flex flex-col gap-1.5">
-                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${otpError ? 'border-red-500/50' : (otpTouched && otpCode.length === 6) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
-                    <KeyRound size={18} className={otpError ? "text-red-400" : (otpTouched && otpCode.length === 6) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                <div className="flex flex-col items-center gap-2">
+                  <div className="relative flex justify-center gap-2 w-full max-w-[280px] mx-auto">
                     <input
                       type="text"
-                      placeholder="6-digit code"
                       maxLength={6}
                       value={otpCode}
                       onChange={(e) => {
@@ -377,20 +375,63 @@ const Auth = () => {
                         if (otpError && val.length === 6) setOtpError("");
                       }}
                       onBlur={() => setOtpTouched(true)}
-                      required
-                      className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none tracking-widest font-mono"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
+                      autoFocus
                     />
+                    {[...Array(6)].map((_, i) => {
+                      const char = otpCode[i] || "";
+                      const isActive = otpCode.length === i;
+                      const isFilled = otpCode.length > i;
+                      return (
+                        <div
+                          key={i}
+                          className={`
+                            w-10 h-12 sm:w-12 sm:h-14 flex items-center justify-center text-xl font-bold rounded-xl transition-all duration-200
+                            ${otpError ? "bg-red-500/10 border-red-500/50 text-red-500"
+                              : isActive ? "bg-blue-500/10 border-blue-500 text-blue-400 scale-[1.03] shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                                : isFilled ? "bg-white/[0.08] border-white/20 text-white"
+                                  : "bg-white/[0.02] border-white/[0.05] text-white/30"}
+                            border relative overflow-hidden backdrop-blur-sm
+                          `}
+                        >
+                          {isActive && (
+                            <motion.div
+                              animate={{ opacity: [1, 0, 1] }}
+                              transition={{ repeat: Infinity, duration: 1 }}
+                              className="w-px h-5 bg-blue-400 absolute"
+                            />
+                          )}
+                          <span className="relative z-10 font-mono">{char}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {otpError && <span className="text-red-400 text-[12px] pl-2">{otpError}</span>}
+                  <AnimatePresence>
+                    {otpError && (
+                      <motion.span
+                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                        className="text-red-400 text-[13px] mt-2 font-medium"
+                      >
+                        {otpError}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading || otpCode.length !== 6}
-                  className="w-full py-3.5 mt-2 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
-                >
-                  {loading ? "Verifying..." : "Verify & Continue"}
-                </button>
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loading || otpCode.length !== 6}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[15px] font-bold active:scale-[0.98] transition-transform disabled:opacity-50 disabled:from-white/10 disabled:to-white/10 disabled:text-white/40 shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:shadow-none"
+                  >
+                    {loading ? "Verifying..." : "Secure Login"}
+                  </button>
+                  <div className="text-center mt-4">
+                    <button type="button" onClick={() => sendEmailOtp(email, undefined)} className="text-[13px] text-white/40 hover:text-white/80 transition-colors">
+                      Didn't receive the code? <span className="text-blue-400">Resend</span>
+                    </button>
+                  </div>
+                </div>
               </motion.form>
             )}
           </AnimatePresence>

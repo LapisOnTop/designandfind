@@ -1,4 +1,6 @@
 import { ReactNode } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 
 interface PhoneFrameProps {
   children: ReactNode;
@@ -7,7 +9,9 @@ interface PhoneFrameProps {
 const PhoneFrame = ({ children }: PhoneFrameProps) => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-black p-6 md:p-12">
-      <div className="phone-frame">
+      <div className="phone-frame relative overflow-hidden" style={{ transform: "translateZ(0)" }}>
+        <Toaster />
+        <Sonner />
         <div className="phone-notch">
           <div className="phone-notch-speaker" />
           <div className="phone-notch-camera" />
