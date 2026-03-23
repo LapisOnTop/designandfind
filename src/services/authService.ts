@@ -87,15 +87,37 @@ export const signInWithPassword = async (params: {
   return data;
 };
 
-export const signInWithProvider = async (provider: 'google' | 'facebook') => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: provider,
+export const sendEmailOtp = async (email: string, displayName?: string) => {
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email,
     options: {
-      redirectTo: window.location.origin + '/studio',
-    },
+      data: displayName ? { display_name: displayName } : undefined,
+    }
   });
 
   if (error) throw error;
+  return data;
+};
+
+export const verifyEmailOtp = async (email: string, token: string, displayName?: string) => {
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email'
+  });
+
+  if (error) throw error;
+
+  if (data.session && data.user) {
+    await ensureProfile(data.user, displayName);
+
+    // Only show subscription on first-ever login
+    const alreadySeen = localStorage.getItem("designMatch_subSeen");
+    if (!alreadySeen) {
+      localStorage.setItem("designMatch_showProAfterLogin", "true");
+    }
+  }
+
   return data;
 };
 
