@@ -87,3 +87,15 @@ export const signInWithPassword = async (params: {
   return data;
 };
 
+export const signInWithProvider = async (provider: 'google' | 'facebook') => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider,
+    options: {
+      redirectTo: window.location.origin + '/studio',
+    },
+  });
+
+  if (error) throw error;
+  return data;
+};
+
