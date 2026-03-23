@@ -230,8 +230,8 @@ const Auth = () => {
                       transition={{ duration: 0.2 }}
                       className="flex flex-col gap-1.5"
                     >
-                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${nameError ? 'border-red-500/50' : (nameTouched && isNameValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md`}>
-                        <User size={18} className={nameError ? "text-red-400" : (nameTouched && isNameValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${nameError ? 'border-red-500/50' : (displayName.length > 0 && isNameValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md`}>
+                        <User size={18} className={nameError ? "text-red-400" : (displayName.length > 0 && isNameValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                         <input
                           type="text"
                           placeholder="Display name"
@@ -250,8 +250,8 @@ const Auth = () => {
                 </AnimatePresence>
 
                 <div className="flex flex-col gap-1.5">
-                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${emailError ? 'border-red-500/50' : (emailTouched && isEmailValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md`}>
-                    <Mail size={18} className={emailError ? "text-red-400" : (emailTouched && isEmailValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${emailError ? 'border-red-500/50' : (email.length > 0 && isEmailValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md`}>
+                    <Mail size={18} className={emailError ? "text-red-400" : (email.length > 0 && isEmailValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                     <input
                       type="email"
                       placeholder="Email"
@@ -269,8 +269,8 @@ const Auth = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${passwordError ? 'border-red-500/50' : (passwordTouched && isPasswordValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
-                    <Lock size={18} className={passwordError ? "text-red-400" : (passwordTouched && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${passwordError ? 'border-red-500/50' : (password.length > 0 && isPasswordValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
+                    <Lock size={18} className={passwordError ? "text-red-400" : (password.length > 0 && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="Password"
@@ -304,8 +304,8 @@ const Auth = () => {
                       transition={{ duration: 0.2 }}
                       className="flex flex-col gap-1.5"
                     >
-                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${confirmPasswordError ? 'border-red-500/50' : (confirmTouched && isConfirmValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
-                        <Lock size={18} className={confirmPasswordError ? "text-red-400" : (confirmTouched && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${confirmPasswordError ? 'border-red-500/50' : (confirmPassword.length > 0 && isConfirmValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
+                        <Lock size={18} className={confirmPasswordError ? "text-red-400" : (confirmPassword.length > 0 && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                         <input
                           type={showPassword ? "text" : "password"}
                           placeholder="Confirm Password"
