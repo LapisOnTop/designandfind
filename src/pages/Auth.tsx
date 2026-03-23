@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Mail, Lock, User, Crown, Check } from "lucide-react";
 import { toast } from "sonner";
 import PhoneFrame from "@/components/PhoneFrame";
 import { signInWithPassword, signUpWithEmail } from "@/services/authService";
 import { isProUser } from "@/services/proService";
-import SubscriptionGate from "@/components/SubscriptionGate";
+import PaymentModal from "@/components/PaymentModal";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -17,6 +17,7 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPostAuthModal, setShowPostAuthModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo") || "/studio";
@@ -24,16 +25,14 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       if (mode === "signup") {
         const result = await signUpWithEmail({ email, password, displayName });
-
         if (result.session && result.user) {
           setAuthMode("signup");
           setShowPostAuthModal(true);
         } else {
-          toast.success("Account created. Please confirm your email, then sign in.");
+          toast.success("Check your inbox — we sent a confirmation link.");
           setMode("login");
         }
       } else {
@@ -44,11 +43,10 @@ const Auth = () => {
     } catch (err: any) {
       if (mode === "signup" && /already registered|already exists/i.test(err?.message || "")) {
         setMode("login");
-        toast.info("That email already has an account — sign in instead.");
+        toast.info("Looks like you already have an account. Try signing in.");
         return;
       }
-
-      toast.error(err.message || "Authentication failed");
+      toast.error(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -59,56 +57,85 @@ const Auth = () => {
     navigate(decodeURIComponent(returnTo), { replace: true });
   };
 
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    setShowPostAuthModal(false);
+    navigate(decodeURIComponent(returnTo), { replace: true });
+  };
+
   return (
     <PhoneFrame>
-      <div className="flex flex-col h-full bg-background">
-        {/* Header */}
-        <div className="flex items-center px-5 pt-12 pb-3">
-          <button onClick={() => navigate("/")} className="p-1.5 rounded-lg bg-secondary text-muted-foreground">
+      <div className="flex flex-col h-full bg-[#050510] relative overflow-hidden">
+
+        {/* Liquid Glass Background — soft ambient orbs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute w-[300px] h-[300px] rounded-full bg-[#0F6FFF]/25 blur-[120px] -top-20 -left-16" />
+          <div className="absolute w-[250px] h-[250px] rounded-full bg-[#7C3AED]/15 blur-[100px] top-1/3 -right-20" />
+          <div className="absolute w-[280px] h-[280px] rounded-full bg-[#00D9FF]/12 blur-[110px] -bottom-16 left-1/4" />
+        </div>
+
+        {/* Back Button */}
+        <div className="relative z-10 px-5 pt-14 pb-2">
+          <button
+            onClick={() => navigate("/")}
+            className="w-9 h-9 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-white/50 hover:text-white/80 transition-colors"
+          >
             <ArrowLeft size={18} />
           </button>
         </div>
 
+        {/* Form Area */}
         <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="flex-1 px-6 pt-6 flex flex-col"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          className="relative z-10 flex-1 flex flex-col px-7 pt-8 overflow-y-auto hide-scrollbar"
         >
-          <h1 className="text-xl font-bold text-foreground mb-1">
-            {mode === "signup" ? "Create your account" : "Welcome back"}
+          {/* Title */}
+          <h1 className="text-[28px] font-bold tracking-tight text-white leading-tight">
+            {mode === "signup" ? "Create account" : "Welcome back"}
           </h1>
-          <p className="text-sm text-muted-foreground mb-8">
-            {mode === "signup" ? "Start designing and sourcing products" : "Sign in to continue"}
+          <p className="text-[14px] text-white/40 mt-2 mb-10 font-normal">
+            {mode === "signup" ? "Get started with DesignMatch" : "Sign in to continue"}
           </p>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {mode === "signup" && (
-              <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5 border border-border">
-                <User size={16} className="text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Display name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                />
-              </div>
-            )}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            <AnimatePresence mode="popLayout">
+              {mode === "signup" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-3.5">
+                    <User size={18} className="text-white/25 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Display name"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5 border border-border">
-              <Mail size={16} className="text-muted-foreground" />
+            <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-3.5">
+              <Mail size={18} className="text-white/25 shrink-0" />
               <input
                 type="email"
-                placeholder="Email address"
+                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
               />
             </div>
 
-            <div className="flex items-center gap-2 bg-secondary rounded-lg px-3 py-2.5 border border-border">
-              <Lock size={16} className="text-muted-foreground" />
+            <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.06] rounded-2xl px-4 py-3.5">
+              <Lock size={18} className="text-white/25 shrink-0" />
               <input
                 type="password"
                 placeholder="Password"
@@ -116,174 +143,129 @@ const Auth = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-50 mt-2"
+              className="w-full py-3.5 mt-4 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
             >
-              {loading ? "Loading..." : mode === "signup" ? "Create Account" : "Sign In"}
+              {loading ? "Please wait..." : mode === "signup" ? "Sign up" : "Sign in"}
             </button>
           </form>
 
-          <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground uppercase opacity-50 relative">
-            <div className="w-full h-px bg-border absolute top-1/2 -z-10" />
-            <span className="bg-background px-2 mx-auto">Or continue with</span>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-3">
-            <button
-              onClick={() =>
-                toast.info("Google sign-in is temporarily routed through the standard email flow. Please use email for now.")
-              }
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-border bg-secondary/30 text-foreground text-sm font-semibold active:scale-[0.98] transition-transform"
-            >
-              <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true" focusable="false">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Google
-            </button>
-            <button
-              onClick={() =>
-                toast.info("Facebook sign-in is temporarily routed through the standard email flow. Please use email for now.")
-              }
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-border bg-secondary/30 text-foreground text-sm font-semibold active:scale-[0.98] transition-transform"
-            >
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#1877F2]" fill="currentColor">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-              Facebook
-            </button>
-          </div>
-
-          <div className="mt-8 text-center pb-8">
+          {/* Toggle */}
+          <div className="mt-auto pt-8 pb-10 flex justify-center">
             <button
               onClick={() => setMode(mode === "signup" ? "login" : "signup")}
-              className="text-sm text-muted-foreground"
+              className="text-[13px] text-white/30 font-normal"
             >
               {mode === "signup" ? (
-                <>Already have an account? <span className="text-primary font-semibold hover:underline">Sign in</span></>
+                <>Have an account? <span className="text-white/60 font-medium">Sign in</span></>
               ) : (
-                <>Don't have an account? <span className="text-primary font-semibold hover:underline">Sign up</span></>
+                <>No account? <span className="text-white/60 font-medium">Sign up</span></>
               )}
             </button>
           </div>
         </motion.div>
 
-        {/* Post-Auth Modal - Pro Subscription or Pro Welcome */}
-        {showPostAuthModal && (
-          <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-6">
+        {/* Post-Auth Modal */}
+        <AnimatePresence>
+          {showPostAuthModal && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-[#141414] border border-[#333] rounded-[1.5rem] p-6 w-full max-w-sm"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-2xl"
             >
-              {isProUser() ? (
-                /* Pro User - Welcome Back */
-                <div className="text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mx-auto">
-                    <Crown size={32} className="text-yellow-500" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">Welcome Back, Pro!</h2>
-                    <p className="text-sm text-[#888] mt-1">
-                      {authMode === "signup" ? "Your Pro account is ready" : "You're signed in as a Pro member"}
-                    </p>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded-xl p-4 text-left space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#888]">Plan</span>
-                      <span className="text-white font-medium">
-                        {localStorage.getItem("designMatch_plan") === "yearly" ? "Yearly Pro" : "Monthly Pro"}
-                      </span>
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.96, opacity: 0 }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                className="bg-[#111118]/90 backdrop-blur-xl border border-white/[0.06] rounded-[1.8rem] p-7 w-full max-w-sm"
+              >
+                {isProUser() ? (
+                  <div className="text-center space-y-5">
+                    <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center mx-auto">
+                      <Crown size={28} className="text-yellow-400" />
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#888]">Next billing</span>
-                      <span className="text-white font-medium">
-                        {(() => {
-                          const plan = localStorage.getItem("designMatch_plan") || "monthly";
-                          const days = plan === "yearly" ? 365 : 30;
-                          const nextDate = new Date();
-                          nextDate.setDate(nextDate.getDate() + days);
-                          return nextDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                        })()}
-                      </span>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">Welcome back, Pro</h2>
+                      <p className="text-[14px] text-white/40 mt-1.5">
+                        {authMode === "signup" ? "Your Pro account is ready." : "You're signed in."}
+                      </p>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#888]">Status</span>
-                      <span className="text-green-400 font-medium flex items-center gap-1">
-                        <Check size={14} /> Active
-                      </span>
+                    <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-left space-y-2.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/40">Plan</span>
+                        <span className="text-white font-medium">
+                          {localStorage.getItem("designMatch_plan") === "yearly" ? "Yearly" : "Monthly"}
+                        </span>
+                      </div>
+                      <div className="w-full h-px bg-white/[0.04]" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/40">Status</span>
+                        <span className="text-green-400 font-medium flex items-center gap-1">
+                          <Check size={14} /> Active
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={handlePostAuthContinue}
-                    className="w-full py-3 rounded-xl bg-yellow-500 text-black text-sm font-semibold active:scale-[0.98] transition-transform"
-                  >
-                    Continue to Studio
-                  </button>
-                </div>
-              ) : (
-                /* Free User - Upgrade Prompt */
-                <div className="text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                    <Crown size={32} className="text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">
-                      {authMode === "signup" ? "Welcome to DesignMatch!" : "Welcome Back!"}
-                    </h2>
-                    <p className="text-sm text-[#888] mt-1">
-                      Upgrade to Pro for unlimited designs and premium features
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-[#888]">
-                      <Check size={16} className="text-primary" />
-                      <span>Unlimited designs</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#888]">
-                      <Check size={16} className="text-primary" />
-                      <span>Advanced export options</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#888]">
-                      <Check size={16} className="text-primary" />
-                      <span>Priority visual search</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#888]">
-                      <Check size={16} className="text-primary" />
-                      <span>No watermark</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2 pt-2">
-                    <button
-                      onClick={() => {
-                        localStorage.setItem("designMatch_showProAfterLogin", "true");
-                        handlePostAuthContinue();
-                      }}
-                      className="w-full py-3 rounded-xl bg-primary text-white text-sm font-semibold active:scale-[0.98] transition-transform"
-                    >
-                      Upgrade to Pro
-                    </button>
                     <button
                       onClick={handlePostAuthContinue}
-                      className="w-full py-3 rounded-xl bg-transparent border border-[#333] text-[#888] text-sm font-semibold active:scale-[0.98] transition-transform hover:text-white"
+                      className="w-full py-3.5 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform"
                     >
-                      Continue with Free
+                      Continue
                     </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center space-y-5">
+                    <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto">
+                      <Crown size={28} className="text-white/70" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">
+                        {authMode === "signup" ? "Welcome to DesignMatch" : "Welcome back"}
+                      </h2>
+                      <p className="text-[14px] text-white/40 mt-1.5">
+                        Unlock unlimited designs and premium tools.
+                      </p>
+                    </div>
+                    <div className="text-left space-y-2 py-2">
+                      {["Unlimited designs", "Priority visual search", "No watermarks"].map(f => (
+                        <div key={f} className="flex items-center gap-2.5 text-[13px] text-white/50">
+                          <Check size={14} className="text-blue-400 shrink-0" />
+                          <span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-2.5 pt-1">
+                      <button
+                        onClick={() => setShowPaymentModal(true)}
+                        className="w-full py-3.5 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform"
+                      >
+                        Upgrade to Pro
+                      </button>
+                      <button
+                        onClick={handlePostAuthContinue}
+                        className="w-full py-3 rounded-2xl text-white/30 text-[13px] font-medium hover:text-white/50 transition-colors"
+                      >
+                        Skip for now
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             </motion.div>
-          </div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
+
+      <PaymentModal
+        open={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={handlePaymentSuccess}
+      />
     </PhoneFrame>
   );
 };

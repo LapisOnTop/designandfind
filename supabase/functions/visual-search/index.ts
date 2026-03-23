@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     });
 
     const response = await fetch(`https://serpapi.com/search.json?${params}`);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('SerpAPI error:', response.status, errorText);
@@ -73,16 +73,38 @@ Deno.serve(async (req) => {
     const data = await response.json();
 
     // Parse visual matches into our product format
-    const results = (data.visual_matches || []).slice(0, 8).map((item: any) => ({
-      title: item.title || 'Untitled Product',
-      price: item.price?.extracted_value ? `$${item.price.extracted_value}` : (item.price?.value || 'Price N/A'),
-      source: item.source || 'Unknown',
-      thumbnail: item.thumbnail || '',
-      link: item.link || '#',
-    }));
+    const USD_TO_PHP = 56.5; // approximate exchange rate
+    const results = (data.visual_matches || []).slice(0, 24).map((item: any) => {
+      let priceUSD = '';
+      let pricePHP = '';
+
+      if (item.price?.extracted_value) {
+        const val = Number(item.price.extracted_value);
+        priceUSD = `$${val.toFixed(2)}`;
+        pricePHP = `₱${(val * USD_TO_PHP).toFixed(2)}`;
+      } else if (item.price?.value) {
+        priceUSD = item.price.value;
+        // Try to parse dollar amount for conversion
+        const match = item.price.value.match(/[\d,.]+/);
+        if (match) {
+          const val = parseFloat(match[0].replace(/,/g, ''));
+          if (!isNaN(val)) pricePHP = `₱${(val * USD_TO_PHP).toFixed(2)}`;
+        }
+      }
+
+      return {
+        title: item.title || 'Untitled Product',
+        priceUSD: priceUSD || 'Price N/A',
+        pricePHP: pricePHP || 'Price N/A',
+        price: priceUSD || 'Price N/A',
+        source: item.source || 'Unknown',
+        thumbnail: item.thumbnail || '',
+        link: item.link || '#',
+      };
+    });
 
     // Clean up uploaded image (fire and forget)
-    supabase.storage.from('search-images').remove([fileName]).catch(() => {});
+    supabase.storage.from('search-images').remove([fileName]).catch(() => { });
 
     return new Response(
       JSON.stringify({ results }),

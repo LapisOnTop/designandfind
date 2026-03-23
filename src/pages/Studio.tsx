@@ -12,13 +12,11 @@ import FloatingContextBar from "@/components/FloatingContextBar";
 import PropertiesBar from "@/components/PropertiesBar";
 import ScanOverlay from "@/components/ScanOverlay";
 import ResultsDrawer, { ProductResult } from "@/components/ResultsDrawer";
-import SubscriptionGate from "@/components/SubscriptionGate";
+import PaymentModal from "@/components/PaymentModal";
 import { supabase } from "@/integrations/supabase/client";
 import { isProUser } from "@/services/proService";
 import { toast } from "sonner";
 import tshirtMockup from "@/assets/tshirt-mockup.png";
-
-type CategoryKey = "Visual Matches (Real)" | "Global General Marketplaces" | "Regional Powerhouses" | "Specialized & Niche Stores" | "Social & Local Commerce";
 
 const TEMPLATE_IMAGES: Record<string, string> = {
   tshirt: tshirtMockup,
@@ -29,8 +27,6 @@ const TEMPLATE_IMAGES: Record<string, string> = {
   pants: tshirtMockup,   // Placeholder for demo
 };
 
-export type CategorizedResults = Record<CategoryKey, ProductResult[]>;
-
 function getClosestColorName(hex: string): string {
   const c = hex.toLowerCase();
   const map: Record<string, string> = {
@@ -40,45 +36,13 @@ function getClosestColorName(hex: string): string {
   return map[c] || "custom color";
 }
 
-const generateMarketplaceLinks = (query: string, sourceImg: string): CategorizedResults => {
-  const q = encodeURIComponent(query);
-  const t = sourceImg;
-  // Generate realistic mock prices
-  const randomPrice = () => {
-    const prices = ["$12.99", "$15.50", "$18.99", "$22.00", "$25.99", "$29.99", "$34.50", "$39.99", "$45.00", "$49.99"];
-    return prices[Math.floor(Math.random() * prices.length)];
-  };
-  
-  // Only return Visual Matches category
-  return {
-    "Visual Matches (Real)": [
-      { title: `${query} - Premium Quality`, price: randomPrice(), source: "Amazon", thumbnail: t, link: `https://www.amazon.com/s?k=${q}` },
-      { title: `${query} - Best Seller`, price: randomPrice(), source: "eBay", thumbnail: t, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
-      { title: `${query} - Wholesale Price`, price: randomPrice(), source: "AliExpress", thumbnail: t, link: `https://www.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html` },
-      { title: `${query} - Hot Deal`, price: randomPrice(), source: "Temu", thumbnail: t, link: `https://www.temu.com/search_result.html?search_key=${q}` },
-      { title: `${query} - In Stock`, price: randomPrice(), source: "Walmart", thumbnail: t, link: `https://www.walmart.com/search?q=${q}` },
-      { title: `${query} - Local Favorite`, price: randomPrice(), source: "Shopee", thumbnail: t, link: `https://shopee.sg/search?keyword=${q}` },
-      { title: `${query} - Best Price`, price: randomPrice(), source: "Lazada", thumbnail: t, link: `https://www.lazada.com.ph/catalog/?q=${q}` },
-      { title: `${query} - Direct from Factory`, price: randomPrice(), source: "Taobao", thumbnail: t, link: `https://s.taobao.com/search?q=${q}` },
-      { title: `${query} - Handmade`, price: randomPrice(), source: "Etsy", thumbnail: t, link: `https://www.etsy.com/search?q=${q}` },
-      { title: `${query} - Fast Fashion`, price: randomPrice(), source: "Shein", thumbnail: t, link: `https://us.shein.com/pdsearch/${q}` },
-      { title: `${query} - Trending Now`, price: randomPrice(), source: "TikTok Shop", thumbnail: t, link: `https://shop.tiktok.com/` },
-      { title: `${query} - Local Seller`, price: randomPrice(), source: "Facebook", thumbnail: t, link: `https://www.facebook.com/marketplace/search/?query=${q}` },
-    ],
-    "Global General Marketplaces": [],
-    "Regional Powerhouses": [],
-    "Specialized & Niche Stores": [],
-    "Social & Local Commerce": [],
-  };
-};
-
 const Studio = () => {
   const canvasRef = useRef<fabric.Canvas | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showSubscription, setShowSubscription] = useState(false);
-  const [results, setResults] = useState<CategorizedResults | null>(null);
+  const [results, setResults] = useState<ProductResult[] | null>(null);
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -564,11 +528,32 @@ const Studio = () => {
       const productName = colorPrefix + (pricedMatches[0]?.title || realMatches[0]?.title || "t-shirt design buy");
       const thumb = pricedMatches[0]?.thumbnail || realMatches[0]?.thumbnail || backgroundUrl || dataUrl;
 
-      const dynamicCategories = generateMarketplaceLinks(productName, thumb);
-      dynamicCategories["Visual Matches (Real)"] = pricedMatches;
-      setResults(dynamicCategories);
+      // Generate fallback results if real matches are insufficient
+      const randomPrice = () => {
+        const prices = ["$12.99", "$15.50", "$18.99", "$22.00", "$25.99", "$29.99", "$34.50", "$39.99", "$45.00", "$49.99"];
+        return prices[Math.floor(Math.random() * prices.length)];
+      };
+
+      const q = encodeURIComponent(productName);
+      const fallbacks: ProductResult[] = [
+        { title: `${productName} - Premium Quality`, price: randomPrice(), source: "Amazon", thumbnail: thumb, link: `https://www.amazon.com/s?k=${q}` },
+        { title: `${productName} - Best Seller`, price: randomPrice(), source: "eBay", thumbnail: thumb, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
+        { title: `${productName} - Wholesale Price`, price: randomPrice(), source: "AliExpress", thumbnail: thumb, link: `https://www.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html` },
+        { title: `${productName} - Hot Deal`, price: randomPrice(), source: "Temu", thumbnail: thumb, link: `https://www.temu.com/search_result.html?search_key=${q}` },
+        { title: `${productName} - In Stock`, price: randomPrice(), source: "Walmart", thumbnail: thumb, link: `https://www.walmart.com/search?q=${q}` },
+        { title: `${productName} - Local Favorite`, price: randomPrice(), source: "Shopee", thumbnail: thumb, link: `https://shopee.sg/search?keyword=${q}` },
+        { title: `${productName} - Best Price`, price: randomPrice(), source: "Lazada", thumbnail: thumb, link: `https://www.lazada.com.ph/catalog/?q=${q}` },
+        { title: `${productName} - Direct from Factory`, price: randomPrice(), source: "Taobao", thumbnail: thumb, link: `https://s.taobao.com/search?q=${q}` },
+        { title: `${productName} - Handmade`, price: randomPrice(), source: "Etsy", thumbnail: thumb, link: `https://www.etsy.com/search?q=${q}` },
+        { title: `${productName} - Fast Fashion`, price: randomPrice(), source: "Shein", thumbnail: thumb, link: `https://us.shein.com/pdsearch/${q}` },
+        { title: `${productName} - Trending Now`, price: randomPrice(), source: "TikTok Shop", thumbnail: thumb, link: `https://shop.tiktok.com/` },
+        { title: `${productName} - Local Seller`, price: randomPrice(), source: "Facebook", thumbnail: thumb, link: `https://www.facebook.com/marketplace/search/?query=${q}` },
+      ];
+
+      const combined = [...pricedMatches, ...fallbacks];
+      setResults(combined.slice(0, 24));
       setShowResults(true);
-      
+
       // Increment lookup counters
       const totalCount = parseInt(localStorage.getItem("designMatch_lookupCount") || "0");
       localStorage.setItem("designMatch_lookupCount", (totalCount + 1).toString());
@@ -577,7 +562,7 @@ const Studio = () => {
         const weeklyCount = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
         localStorage.setItem("designMatch_lookup_count_week", (weeklyCount + 1).toString());
       }
-    } catch (err) { 
+    } catch (err) {
       console.error("Lookup Failed:", err);
       toast.error("Lookup failed. Please try again.");
     }
@@ -666,7 +651,7 @@ const Studio = () => {
 
         <CanvasEditor canvasRef={canvasRef} backgroundUrl={backgroundUrl} logoUrl={activeView === "front" ? logoUrl : undefined}
           templateColor={templateColor} showBg={showBg} savedState={savedState} layoutMode={layoutMode}
-          showPrintArea={showPrintArea} activeView={activeView}
+          showPrintArea={showPrintArea} activeView={activeView} isCustomTemplate={customTemplate}
           zoom={zoom} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReady={handleCanvasReady} />
 
         <ViewTabs activeView={activeView} onViewChange={setActiveView} />
@@ -680,6 +665,7 @@ const Studio = () => {
       <BottomToolbar
         activeSheet={activeBottomSheet} onOpenSheet={setActiveBottomSheet}
         onUploadImage={handleUploadImage}
+        onRequirePro={() => setShowSubscription(true)}
       />
 
       <StudioBottomSheet
@@ -706,7 +692,7 @@ const Studio = () => {
       {/* Overlays and Modals */}
       <AnimatePresence>{isSearching && <ScanOverlay />}</AnimatePresence>
       <ResultsDrawer open={showResults} onClose={() => setShowResults(false)} results={results} />
-      <SubscriptionGate open={showSubscription} onClose={() => setShowSubscription(false)} />
+      <PaymentModal open={showSubscription} onClose={() => setShowSubscription(false)} onSuccess={() => setShowSubscription(false)} />
     </PhoneFrame>
   );
 };

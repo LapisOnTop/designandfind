@@ -5,7 +5,7 @@ import PhoneFrame from "@/components/PhoneFrame";
 import { useAuth } from "@/contexts/AuthContext";
 import { isProUser } from "@/services/proService";
 import { supabase } from "@/integrations/supabase/client";
-import SubscriptionGate from "@/components/SubscriptionGate";
+import PaymentModal from "@/components/PaymentModal";
 
 const Account = () => {
     const navigate = useNavigate();
@@ -22,11 +22,18 @@ const Account = () => {
     const [lookupCount, setLookupCount] = useState(() => {
         return parseInt(localStorage.getItem("designMatch_lookupCount") || "0");
     });
+    const [weeklyLookups, setWeeklyLookups] = useState(() => {
+        return parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
+    });
+    const [lastReset, setLastReset] = useState(() => {
+        return parseInt(localStorage.getItem("designMatch_lookup_lastReset") || "0");
+    });
 
     useEffect(() => {
-        // Update lookup count on mount
-        const count = parseInt(localStorage.getItem("designMatch_lookupCount") || "0");
-        setLookupCount(count);
+        // Update counts on mount
+        setLookupCount(parseInt(localStorage.getItem("designMatch_lookupCount") || "0"));
+        setWeeklyLookups(parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0"));
+        setLastReset(parseInt(localStorage.getItem("designMatch_lookup_lastReset") || "0"));
     }, []);
 
     const handleSaveName = () => {
@@ -61,6 +68,15 @@ const Account = () => {
         const nextDate = new Date();
         nextDate.setDate(nextDate.getDate() + days);
         return nextDate.toLocaleDateString("en-US", { month: "short", year: "numeric", day: "numeric" });
+    };
+
+    const getDaysUntilReset = () => {
+        if (!lastReset) return 0;
+        const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+        const resetTime = lastReset + ONE_WEEK;
+        const now = Date.now();
+        if (now >= resetTime) return 0;
+        return Math.ceil((resetTime - now) / (1000 * 60 * 60 * 24));
     };
 
     return (
@@ -123,14 +139,14 @@ const Account = () => {
                                     <div>
                                         <p className="text-sm font-bold">{isPro ? "Pro Plan" : "Free Plan"}</p>
                                         <p className="text-xs text-[#888]">
-                                            {isPro 
+                                            {isPro
                                                 ? (planType === 'yearly' ? 'Yearly Billing' : 'Monthly Billing')
                                                 : "Upgrade for unlimited designs"
                                             }
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 {isPro && (
                                     <div className="pt-3 border-t border-[#222]">
                                         <p className="text-xs text-[#888]">
@@ -138,11 +154,11 @@ const Account = () => {
                                         </p>
                                     </div>
                                 )}
-                                
+
                                 {!isPro && (
-                                    <button 
-                                        onClick={() => setShowSubscription(true)} 
-                                        className="w-full text-xs font-semibold text-white bg-primary px-4 py-2.5 rounded-full active:scale-95 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                                    <button
+                                        onClick={() => setShowSubscription(true)}
+                                        className="w-full text-xs font-bold text-[#0a0a0a] bg-white px-4 py-3 rounded-2xl active:scale-95 shadow-[0_4px_24px_rgba(255,255,255,0.15)] hover:bg-[#f0f0f0] transition-colors"
                                     >
                                         Upgrade to Pro
                                     </button>
@@ -151,32 +167,38 @@ const Account = () => {
                         </div>
                     </section>
 
-                    {/* Stats Dashboard - Only Lookups */}
+                    {/* Stats Dashboard - Lookups */}
                     <section className="space-y-2">
                         <h2 className="text-[10px] font-bold text-[#888] uppercase tracking-widest pl-1">Activity</h2>
-                        <div className="bg-[#141414] border border-[#222] rounded-[1.2rem] p-4 flex flex-col gap-1">
+                        <div className="bg-[#141414] border border-[#222] rounded-[1.2rem] p-4 flex flex-col gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-[#222] text-[#888] flex items-center justify-center">
                                     <Search size={18} />
                                 </div>
-                                <div>
-                                    <span className="text-[10px] font-bold text-[#555] uppercase tracking-wider">Total Lookups</span>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-black text-white">{lookupCount}</span>
-                                        <span className="text-[10px] text-[#555]">searches</span>
+                                <div className="flex-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-[#555] uppercase tracking-wider">Lookup Limit</span>
+                                        <span className="text-[10px] font-bold text-[#888]">
+                                            {isPro ? "Unlimited" : `${weeklyLookups} / 1 Used`}
+                                        </span>
+                                    </div>
+                                    {/* Progress Bar */}
+                                    <div className="h-1.5 w-full bg-[#222] rounded-full mt-2 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${isPro ? 'bg-white w-full' : (weeklyLookups >= 1 ? 'bg-red-500 w-full' : 'bg-white w-0')}`}
+                                        />
                                     </div>
                                 </div>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-[#555] px-1">
+                                <span>Total lifetime: {lookupCount}</span>
+                                {!isPro && weeklyLookups >= 1 && (
+                                    <span className="text-orange-400">Resets in {getDaysUntilReset()} days</span>
+                                )}
                             </div>
                         </div>
                     </section>
 
-                    {/* Danger Zone */}
-                    <section className="space-y-2 pt-4">
-                        <h2 className="text-[10px] font-bold text-red-500/60 uppercase tracking-widest pl-1">Danger Zone</h2>
-                        <button onClick={handleDeleteAccount} className="w-full h-11 rounded-[12px] bg-transparent border border-red-500/20 text-red-500 font-semibold text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 hover:bg-red-500/10">
-                            <LogOut size={16} /> Delete Account
-                        </button>
-                    </section>
 
                     {/* Log Out */}
                     <div className="pt-2 pb-8">
@@ -193,13 +215,13 @@ const Account = () => {
                         <Home size={20} />
                         <span className="text-[10px] font-medium">Home</span>
                     </button>
-                    <button className="flex flex-col items-center gap-1 transition-colors text-primary">
+                    <button className="flex flex-col items-center gap-1 transition-colors text-white">
                         <User size={20} />
                         <span className="text-[10px] font-medium">Account</span>
                     </button>
                 </div>
             </div>
-            <SubscriptionGate open={showSubscription} onClose={() => setShowSubscription(false)} />
+            <PaymentModal open={showSubscription} onClose={() => setShowSubscription(false)} onSuccess={() => { setShowSubscription(false); window.location.reload(); }} />
         </PhoneFrame>
     );
 };

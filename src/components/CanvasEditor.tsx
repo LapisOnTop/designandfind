@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { fabric } from "fabric";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { isProUser } from "../services/proService";
@@ -17,6 +17,7 @@ interface CanvasEditorProps {
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onReady?: () => void;
+  isCustomTemplate?: boolean;
 }
 
 const CANVAS_W = 358;
@@ -27,10 +28,12 @@ const CENTER_Y = CANVAS_H / 2;
 const CanvasEditor = ({
   canvasRef, backgroundUrl, logoUrl, templateColor = "#ffffff",
   showBg = true, savedState, layoutMode = true, showPrintArea = true,
-  activeView = "front", zoom = 1, onZoomIn, onZoomOut, onReady
+  activeView = "front", zoom = 1, onZoomIn, onZoomOut, onReady,
+  isCustomTemplate = false
 }: CanvasEditorProps) => {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef(zoom);
+  const [bgLoaded, setBgLoaded] = useState(0);
 
   useEffect(() => {
     zoomRef.current = zoom;
@@ -101,32 +104,93 @@ const CanvasEditor = ({
       return;
     };
 
+    const removeOuterWhiteBg = (imgCtx: CanvasRenderingContext2D, width: number, height: number) => {
+      const imageData = imgCtx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+
+      // Sample the top-left pixel as the background color
+      const bgR = data[0];
+      const bgG = data[1];
+      const bgB = data[2];
+
+      // Tolerance for noise / compression artifacts
+      const tolerance = 40;
+
+      const isBgColor = (i: number) => {
+        // If it's already transparent, consider it bg
+        if (data[i + 3] === 0) return true;
+        // Check if within tolerance of the corner pixel
+        return Math.abs(data[i] - bgR) <= tolerance &&
+          Math.abs(data[i + 1] - bgG) <= tolerance &&
+          Math.abs(data[i + 2] - bgB) <= tolerance;
+      };
+
+      // We will perform a simple flood fill from the borders using a stack
+      const stack: [number, number][] = [];
+      const visited = new Uint8Array(width * height);
+
+      const pushIfValid = (x: number, y: number) => {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
+          const idx = y * width + x;
+          const i = idx * 4;
+          if (!visited[idx] && isBgColor(i)) {
+            visited[idx] = 1;
+            stack.push([x, y]);
+          }
+        }
+      };
+
+      // Seed borders
+      for (let x = 0; x < width; x++) { pushIfValid(x, 0); pushIfValid(x, height - 1); }
+      for (let y = 0; y < height; y++) { pushIfValid(0, y); pushIfValid(width - 1, y); }
+
+      while (stack.length > 0) {
+        const [x, y] = stack.pop()!;
+        const idx = y * width + x;
+        const i = idx * 4;
+        data[i + 3] = 0; // make transparent
+
+        pushIfValid(x + 1, y);
+        pushIfValid(x - 1, y);
+        pushIfValid(x, y + 1);
+        pushIfValid(x, y - 1);
+      }
+
+      imgCtx.putImageData(imageData, 0, 0);
+    };
+
     const loadBackgroundImage = (url: string, callback: () => void) => {
       const imgEl = new Image();
       imgEl.crossOrigin = "anonymous";
       imgEl.onload = () => {
-        const halfW = imgEl.width / 2;
+        const halfW = Math.floor(imgEl.width / 2);
         const cropX = activeView === "back" ? halfW : 0;
 
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = halfW;
         tempCanvas.height = imgEl.height;
         const ctx = tempCanvas.getContext("2d")!;
+
+        // Draw image first (without white backfill so we can sample true corner color)
         ctx.drawImage(imgEl, cropX, 0, halfW, imgEl.height, 0, 0, halfW, imgEl.height);
+
+        // Apply bg removal to ALL templates
+        removeOuterWhiteBg(ctx, halfW, imgEl.height);
 
         fabric.Image.fromURL(tempCanvas.toDataURL(), (img) => {
           if (!img) return;
           const fitScale = Math.min(CANVAS_W / (img.width || CANVAS_W), CANVAS_H / (img.height || CANVAS_H));
-          img.scale(fitScale * 0.95);
+          img.scale(fitScale * 0.9);
           img.set({
             originX: "center", originY: "center",
             left: CENTER_X, top: CENTER_Y,
             selectable: false, evented: false,
             name: "productMockup", visible: true,
-            shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.2)", blur: 30, offsetX: 0, offsetY: 8 })
+            shadow: new fabric.Shadow({ color: "rgba(0,0,0,0.15)", blur: 20, offsetX: 0, offsetY: 6 })
           });
           canvas.add(img);
           canvas.sendToBack(img);
+          setBgLoaded(v => v + 1);
           callback();
         });
       };
@@ -168,7 +232,7 @@ const CanvasEditor = ({
 
     canvasRef.current = canvas;
     return () => canvas.dispose();
-  }, [backgroundUrl, logoUrl, savedState, showPrintArea, activeView]);
+  }, [backgroundUrl, logoUrl, savedState, showPrintArea, activeView, isCustomTemplate]);
 
   // Dynamic updates for templateColor and showBg
   useEffect(() => {
@@ -176,7 +240,7 @@ const CanvasEditor = ({
     if (!canvas) return;
 
     // BG On/Off only affects canvas background color
-    canvas.backgroundColor = showBg ? "#f3f4f6" : "transparent";
+    canvas.backgroundColor = showBg ? "#ffffff" : "transparent";
 
     const mockup = canvas.getObjects().find(o => o.name === "productMockup") as fabric.Image | undefined;
     if (mockup) {
@@ -206,7 +270,7 @@ const CanvasEditor = ({
     if (oldTint) canvas.remove(oldTint);
 
     canvas.renderAll();
-  }, [showBg, templateColor]);
+  }, [showBg, templateColor, bgLoaded]);
 
   // Zoom
   useEffect(() => {
@@ -228,7 +292,7 @@ const CanvasEditor = ({
   return (
     <div
       className="flex-1 min-h-0 flex items-center justify-center overflow-hidden transition-all relative border-t border-[#222]"
-      style={{ backgroundColor: showBg ? (isWhiteShirt ? "#f0f0f0" : "#0f0f0f") : "transparent" }}
+      style={{ backgroundColor: showBg ? "#ffffff" : "transparent" }}
     >
       {/* Zoom Controls */}
       <div className="absolute bottom-4 right-4 z-20 flex items-center bg-[#111] border border-[#222] rounded-full shadow-lg overflow-hidden">
@@ -249,7 +313,7 @@ const CanvasEditor = ({
       {/* Free Tier Watermark */}
       {!isProUser() && (
         <div className="absolute bottom-4 left-4 z-20 pointer-events-none opacity-40 select-none">
-          <p className={`text-sm font-black tracking-widest uppercase ${isWhiteShirt && showBg ? "text-black" : "text-white"}`}>designmatch</p>
+          <p className={`text-sm font-black tracking-widest uppercase ${showBg ? "text-black" : "text-white"}`}>designmatch</p>
         </div>
       )}
     </div>

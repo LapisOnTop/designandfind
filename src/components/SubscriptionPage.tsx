@@ -18,12 +18,11 @@ const SubscriptionPage = ({ open, onClose }: SubscriptionPageProps) => {
   };
 
   const features = [
-    "Unlimited product lookups",
-    "Export designs in HD (PNG/SVG)",
-    "Advanced Font, Stroke & Shadow tools",
-    "Remove watermarks",
-    "Access to specialized global suppliers",
-    "Priority support",
+    "Unlimited design lookups per week",
+    "Search across 24 global marketplaces",
+    "Export studio designs in high-res",
+    "Advanced text, stroke & shadow tools",
+    "Direct supplier contact links",
   ];
 
   return (

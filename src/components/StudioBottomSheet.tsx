@@ -96,6 +96,12 @@ const StudioBottomSheet = ({
                                     placeholder="Search fonts..." 
                                     value={fontSearch}
                                     onChange={(e) => setFontSearch(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        // Allow arrow keys to work normally in the input
+                                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                            e.stopPropagation();
+                                        }
+                                    }}
                                     className="w-full h-10 bg-[#1a1a1a] rounded-xl pl-9 pr-4 text-sm text-white placeholder:text-[#555] outline-none border border-[#222] focus:border-primary" 
                                 />
                             </div>
