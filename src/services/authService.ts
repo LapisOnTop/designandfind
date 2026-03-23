@@ -87,39 +87,6 @@ export const signInWithPassword = async (params: {
   return data;
 };
 
-export const signUpWithEmail = async (params: {
-  email: string;
-  password: string;
-  displayName?: string;
-}) => {
-  const { email, password, displayName } = params;
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: window.location.origin,
-      data: { display_name: displayName || email },
-    },
-  });
-
-  if (error) throw error;
-  return data;
-};
-
-export const signInWithPassword = async (params: {
-  email: string;
-  password: string;
-}) => {
-  const { email, password } = params;
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error) throw error;
-  return data;
-};
-
 export const sendEmailOtp = async (email: string, displayName?: string) => {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
