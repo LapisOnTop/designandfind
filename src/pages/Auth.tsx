@@ -31,53 +31,68 @@ const Auth = () => {
   const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo") || "/studio";
 
+  const [nameTouched, setNameTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [confirmTouched, setConfirmTouched] = useState(false);
+
+  const isNameValid = displayName.trim().length >= 3;
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isPasswordValid = password.length >= 6;
+  const isConfirmValid = confirmPassword === password && password.length >= 6;
+
   useEffect(() => {
-    if (mode === "signup" && displayName.length > 0) {
-      if (displayName.trim().length < 3) setNameError("Name must be at least 3 characters");
+    if (mode === "signup" && nameTouched) {
+      if (!isNameValid) setNameError("Name must be at least 3 characters");
       else setNameError("");
     } else if (mode === "login") setNameError("");
-  }, [displayName, mode]);
+  }, [displayName, mode, nameTouched, isNameValid]);
 
   useEffect(() => {
-    if (email.length > 0) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) setEmailError("Please enter a valid email address");
+    if (emailTouched) {
+      if (!isEmailValid && email.length > 0) setEmailError("Please enter a valid email address");
       else setEmailError("");
     }
-  }, [email]);
+  }, [email, emailTouched, isEmailValid]);
 
   useEffect(() => {
-    if (password.length > 0) {
-      if (password.length < 6) setPasswordError("Password must be at least 6 characters");
+    if (passwordTouched) {
+      if (!isPasswordValid && password.length > 0) setPasswordError("Password must be at least 6 characters");
       else setPasswordError("");
     }
-  }, [password]);
+  }, [password, passwordTouched, isPasswordValid]);
 
   useEffect(() => {
-    if (mode === "signup" && confirmPassword.length > 0) {
-      if (confirmPassword !== password) setConfirmPasswordError("Passwords do not match");
+    if (mode === "signup" && confirmTouched) {
+      if (!isConfirmValid && confirmPassword.length > 0) setConfirmPasswordError("Passwords do not match");
       else setConfirmPasswordError("");
     } else if (mode === "login") setConfirmPasswordError("");
-  }, [confirmPassword, password, mode]);
+  }, [confirmPassword, password, mode, confirmTouched, isConfirmValid]);
 
   const validate = () => {
+    setNameTouched(true);
+    setEmailTouched(true);
+    setPasswordTouched(true);
+    if (mode === "signup") setConfirmTouched(true);
+
     let isValid = true;
 
-    if (mode === "signup" && displayName.trim().length < 3) {
+    if (mode === "signup" && !isNameValid) {
       setNameError("Name must be at least 3 characters");
       isValid = false;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isEmailValid) {
       setEmailError("Please enter a valid email address");
       isValid = false;
     }
 
-    if (password.length < 6) {
+    if (!isPasswordValid) {
       setPasswordError("Password must be at least 6 characters");
       isValid = false;
     }
 
-    if (mode === "signup" && confirmPassword !== password) {
+    if (mode === "signup" && !isConfirmValid) {
       setConfirmPasswordError("Passwords do not match");
       isValid = false;
     }
@@ -171,16 +186,17 @@ const Auth = () => {
                   transition={{ duration: 0.2 }}
                   className="flex flex-col gap-1.5"
                 >
-                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${nameError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
-                    <User size={18} className={nameError ? "text-red-400" : "text-white/25 shrink-0"} />
+                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${nameError ? 'border-red-500/50' : (nameTouched && isNameValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
+                    <User size={18} className={nameError ? "text-red-400" : (nameTouched && isNameValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                     <input
                       type="text"
                       placeholder="Display name"
                       value={displayName}
                       onChange={(e) => {
                         setDisplayName(e.target.value);
-                        if (nameError) setNameError("");
+                        if (nameError && e.target.value.trim().length >= 3) setNameError("");
                       }}
+                      onBlur={() => setNameTouched(true)}
                       className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
                     />
                   </div>
@@ -190,16 +206,17 @@ const Auth = () => {
             </AnimatePresence>
 
             <div className="flex flex-col gap-1.5">
-              <div className={`flex items-center gap-3 bg-white/[0.04] border ${emailError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
-                <Mail size={18} className={emailError ? "text-red-400" : "text-white/25 shrink-0"} />
+              <div className={`flex items-center gap-3 bg-white/[0.04] border ${emailError ? 'border-red-500/50' : (emailTouched && isEmailValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors`}>
+                <Mail size={18} className={emailError ? "text-red-400" : (emailTouched && isEmailValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                 <input
                   type="email"
                   placeholder="Email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (emailError) setEmailError("");
+                    if (emailError && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value)) setEmailError("");
                   }}
+                  onBlur={() => setEmailTouched(true)}
                   required
                   className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none"
                 />
@@ -208,16 +225,17 @@ const Auth = () => {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <div className={`flex items-center gap-3 bg-white/[0.04] border ${passwordError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
-                <Lock size={18} className={passwordError ? "text-red-400" : "text-white/25 shrink-0"} />
+              <div className={`flex items-center gap-3 bg-white/[0.04] border ${passwordError ? 'border-red-500/50' : (passwordTouched && isPasswordValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                <Lock size={18} className={passwordError ? "text-red-400" : (passwordTouched && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                 <input
                   type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    if (passwordError) setPasswordError("");
+                    if (passwordError && e.target.value.length >= 6) setPasswordError("");
                   }}
+                  onBlur={() => setPasswordTouched(true)}
                   required
                   minLength={6}
                   className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
@@ -243,16 +261,17 @@ const Auth = () => {
                   transition={{ duration: 0.2 }}
                   className="flex flex-col gap-1.5"
                 >
-                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${confirmPasswordError ? 'border-red-500/50' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
-                    <Lock size={18} className={confirmPasswordError ? "text-red-400" : "text-white/25 shrink-0"} />
+                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${confirmPasswordError ? 'border-red-500/50' : (confirmTouched && isConfirmValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                    <Lock size={18} className={confirmPasswordError ? "text-red-400" : (confirmTouched && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                     <input
                       type={showPassword ? "text" : "password"}
                       placeholder="Confirm Password"
                       value={confirmPassword}
                       onChange={(e) => {
                         setConfirmPassword(e.target.value);
-                        if (confirmPasswordError) setConfirmPasswordError("");
+                        if (confirmPasswordError && e.target.value === password) setConfirmPasswordError("");
                       }}
+                      onBlur={() => setConfirmTouched(true)}
                       required
                       minLength={6}
                       className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
