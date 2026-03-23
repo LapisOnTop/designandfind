@@ -67,11 +67,8 @@ const Auth = () => {
     <PhoneFrame>
       <div className="flex flex-col h-full bg-[#050510] relative overflow-hidden">
 
-        {/* Liquid Glass Background — soft ambient orbs */}
+        {/* Liquid Glass Background        {/* Glow effects removed */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute w-[300px] h-[300px] rounded-full bg-[#0F6FFF]/25 blur-[120px] -top-20 -left-16" />
-          <div className="absolute w-[250px] h-[250px] rounded-full bg-[#7C3AED]/15 blur-[100px] top-1/3 -right-20" />
-          <div className="absolute w-[280px] h-[280px] rounded-full bg-[#00D9FF]/12 blur-[110px] -bottom-16 left-1/4" />
         </div>
 
         {/* Back Button */}

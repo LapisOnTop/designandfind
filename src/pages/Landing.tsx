@@ -105,10 +105,8 @@ const Landing = () => {
     <PhoneFrame>
       <div className="flex flex-col h-full bg-[#050510] relative overflow-hidden font-sans text-white">
 
-        {/* Ambient background */}
+        {/* Ambient background removed */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute w-[280px] h-[280px] rounded-full bg-blue-500/10 blur-[100px] -top-20 -left-10" />
-          <div className="absolute w-[200px] h-[200px] rounded-full bg-indigo-500/8 blur-[80px] top-1/2 -right-16" />
         </div>
 
         {/* Hidden file inputs */}

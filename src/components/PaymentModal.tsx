@@ -58,9 +58,6 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
             transition={{ type: "spring", damping: 32, stiffness: 320 }}
             className="relative z-10 w-full max-h-[92%] bg-[#0c0c10] rounded-t-[2rem] overflow-hidden flex flex-col"
           >
-            {/* Ambient glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[260px] h-[120px] bg-blue-500/15 blur-[80px] rounded-full pointer-events-none" />
-
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-9 h-[3px] rounded-full bg-white/15" />
