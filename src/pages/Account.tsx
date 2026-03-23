@@ -125,7 +125,7 @@ const Account = () => {
                     {/* Plan Section */}
                     <section className="space-y-2">
                         <h2 className="text-[10px] font-bold text-[#888] uppercase tracking-widest pl-1">Subscription</h2>
-                        <div className="bg-gradient-to-br from-[#141414] to-[#0f0f0f] border border-[#222] rounded-[1.2rem] p-4 relative overflow-hidden group transition-all hover:border-primary/30">
+                        <div className="bg-[#141414] border border-[#222] rounded-[1.2rem] p-4 relative overflow-hidden group transition-all hover:border-primary/30">
                             {isPro && (
                                 <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                                     <Crown size={64} className="text-yellow-500" />

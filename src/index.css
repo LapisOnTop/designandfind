@@ -32,32 +32,32 @@
     --color-crystalline-cyan: #00D9FF;
     --color-opalescent-purple: #7C3AED;
     --color-frosted-lavender: #A78BFA;
-    
+
     /* Neutral Glass Foundation */
     --color-deep-frost: #0A0E27;
     --color-translucent-base: #1A1F3A;
     --color-ethereal-surface: #2D3561;
     --color-frosted-white: #F8F9FC;
-    
+
     /* Accent & Alert Colors */
     --color-crystalline-green: #10B981;
     --color-amber-glow: #F59E0B;
     --color-rose-shimmer: #F43F5E;
-    
+
     /* Glass Opacity Levels */
     --glass-ultra: rgba(255, 255, 255, 0.08);
     --glass-subtle: rgba(255, 255, 255, 0.12);
     --glass-light: rgba(255, 255, 255, 0.18);
     --glass-medium: rgba(255, 255, 255, 0.25);
     --glass-opaque: rgba(255, 255, 255, 0.85);
-    
+
     /* Shadow & Glow Presets */
     --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
     --shadow-glass-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
     --glow-primary: 0 0 20px rgba(15, 111, 255, 0.3);
     --glow-accent: 0 0 16px rgba(0, 212, 255, 0.2);
     --glow-focus: 0 0 0 4px rgba(15, 111, 255, 0.3), 0 0 12px rgba(0, 212, 255, 0.4);
-    
+
     /* Blur & Backdrop Presets */
     --blur-shallow: blur(8px) saturate(160%);
     --blur-medium: blur(16px) saturate(170%);
@@ -296,7 +296,7 @@
   }
 
   .glass-badge {
-    background: linear-gradient(135deg, rgba(15, 111, 255, 0.2), rgba(124, 58, 237, 0.2));
+    background: rgba(15, 111, 255, 0.2);
     border: 1px solid rgba(0, 212, 255, 0.2);
     color: var(--color-crystalline-cyan);
   }
@@ -325,7 +325,7 @@
     left: 0;
     width: 100%;
     height: 40%;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+    background: rgba(255, 255, 255, 0.05);
     pointer-events: none;
     border-radius: inherit;
   }
@@ -390,82 +390,99 @@
 
 /* Liquid Glass Animations */
 @keyframes shimmer-reflection {
-  0% { 
-    transform: translateX(-100%) translateY(-50%); 
-    opacity: 0; 
+  0% {
+    transform: translateX(-100%) translateY(-50%);
+    opacity: 0;
   }
-  50% { 
-    opacity: 0.8; 
+
+  50% {
+    opacity: 0.8;
   }
-  100% { 
-    transform: translateX(100%) translateY(-50%); 
-    opacity: 0; 
+
+  100% {
+    transform: translateX(100%) translateY(-50%);
+    opacity: 0;
   }
 }
 
 @keyframes gentle-shimmer {
-  0%, 100% { 
-    opacity: 0.6; 
+
+  0%,
+  100% {
+    opacity: 0.6;
   }
-  50% { 
-    opacity: 1; 
+
+  50% {
+    opacity: 1;
   }
 }
 
 @keyframes liquid-glow {
-  0%, 100% { 
-    box-shadow: 0 0 20px rgba(15, 111, 255, 0.3), 
-                0 0 40px rgba(0, 212, 255, 0.15), 
-                inset 0 0 20px rgba(255, 255, 255, 0.08);
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(15, 111, 255, 0.3),
+      0 0 40px rgba(0, 212, 255, 0.15),
+      inset 0 0 20px rgba(255, 255, 255, 0.08);
   }
-  50% { 
-    box-shadow: 0 0 30px rgba(15, 111, 255, 0.5), 
-                0 0 60px rgba(0, 212, 255, 0.25), 
-                inset 0 0 30px rgba(255, 255, 255, 0.12);
+
+  50% {
+    box-shadow: 0 0 30px rgba(15, 111, 255, 0.5),
+      0 0 60px rgba(0, 212, 255, 0.25),
+      inset 0 0 30px rgba(255, 255, 255, 0.12);
   }
 }
 
 @keyframes liquid-light-pulse {
-  0% { 
+  0% {
     box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.7),
-                0 0 0 0 rgba(15, 111, 255, 0.5);
+      0 0 0 0 rgba(15, 111, 255, 0.5);
   }
-  70% { 
+
+  70% {
     box-shadow: 0 0 0 20px rgba(0, 212, 255, 0),
-                0 0 0 30px rgba(15, 111, 255, 0);
+      0 0 0 30px rgba(15, 111, 255, 0);
   }
-  100% { 
+
+  100% {
     box-shadow: 0 0 0 0 rgba(0, 212, 255, 0),
-                0 0 0 0 rgba(15, 111, 255, 0);
+      0 0 0 0 rgba(15, 111, 255, 0);
   }
 }
 
 @keyframes floating-reflection {
-  0%, 100% { 
-    transform: translateY(0px) translateX(0px); 
-    opacity: 0.4; 
+
+  0%,
+  100% {
+    transform: translateY(0px) translateX(0px);
+    opacity: 0.4;
   }
-  50% { 
-    transform: translateY(-8px) translateX(4px); 
-    opacity: 0.6; 
+
+  50% {
+    transform: translateY(-8px) translateX(4px);
+    opacity: 0.6;
   }
 }
 
 @keyframes liquid-morph {
-  0% { 
-    border-radius: 20px; 
+  0% {
+    border-radius: 20px;
   }
-  25% { 
-    border-radius: 40px 20px 20px 20px; 
+
+  25% {
+    border-radius: 40px 20px 20px 20px;
   }
-  50% { 
-    border-radius: 20px 40px 20px 20px; 
+
+  50% {
+    border-radius: 20px 40px 20px 20px;
   }
-  75% { 
-    border-radius: 20px 20px 40px 20px; 
+
+  75% {
+    border-radius: 20px 20px 40px 20px;
   }
-  100% { 
-    border-radius: 20px; 
+
+  100% {
+    border-radius: 20px;
   }
 }
 
@@ -474,6 +491,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -481,23 +499,26 @@
 }
 
 @keyframes glass-shimmer-wave {
-  0% { 
-    background-position: -1000px 0; 
+  0% {
+    background-position: -1000px 0;
   }
-  100% { 
-    background-position: 1000px 0; 
+
+  100% {
+    background-position: 1000px 0;
   }
 }
 
 @keyframes iridescent-shift {
-  0% { 
-    filter: hue-rotate(0deg); 
+  0% {
+    filter: hue-rotate(0deg);
   }
-  50% { 
-    filter: hue-rotate(180deg); 
+
+  50% {
+    filter: hue-rotate(180deg);
   }
-  100% { 
-    filter: hue-rotate(360deg); 
+
+  100% {
+    filter: hue-rotate(360deg);
   }
 }
 
@@ -535,12 +556,29 @@
 }
 
 /* Staggered entrance animations */
-.stagger-item:nth-child(1) { animation: stagger-fade-in 0.5s ease-out 0s; }
-.stagger-item:nth-child(2) { animation: stagger-fade-in 0.5s ease-out 0.1s; }
-.stagger-item:nth-child(3) { animation: stagger-fade-in 0.5s ease-out 0.2s; }
-.stagger-item:nth-child(4) { animation: stagger-fade-in 0.5s ease-out 0.3s; }
-.stagger-item:nth-child(5) { animation: stagger-fade-in 0.5s ease-out 0.4s; }
-.stagger-item:nth-child(6) { animation: stagger-fade-in 0.5s ease-out 0.5s; }
+.stagger-item:nth-child(1) {
+  animation: stagger-fade-in 0.5s ease-out 0s;
+}
+
+.stagger-item:nth-child(2) {
+  animation: stagger-fade-in 0.5s ease-out 0.1s;
+}
+
+.stagger-item:nth-child(3) {
+  animation: stagger-fade-in 0.5s ease-out 0.2s;
+}
+
+.stagger-item:nth-child(4) {
+  animation: stagger-fade-in 0.5s ease-out 0.3s;
+}
+
+.stagger-item:nth-child(5) {
+  animation: stagger-fade-in 0.5s ease-out 0.4s;
+}
+
+.stagger-item:nth-child(6) {
+  animation: stagger-fade-in 0.5s ease-out 0.5s;
+}
 
 /* Accessibility: Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
@@ -553,6 +591,7 @@
 
 /* High contrast mode support */
 @media (prefers-contrast: more) {
+
   .glass-base,
   .glass-elevated,
   .glass-modal {
