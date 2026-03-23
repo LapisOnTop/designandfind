@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Mail, User, Crown, Check, KeyRound } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Crown, Check, Eye, EyeOff, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import PhoneFrame from "@/components/PhoneFrame";
-import { sendEmailOtp, verifyEmailOtp } from "@/services/authService";
+import { signUpWithEmail, signInWithPassword, sendEmailOtp, verifyEmailOtp } from "@/services/authService";
+import { supabase } from "@/integrations/supabase/client";
 import { isProUser } from "@/services/proService";
 import PaymentModal from "@/components/PaymentModal";
 
@@ -15,6 +16,8 @@ const Auth = () => {
 
   const [otpStep, setOtpStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [otpCode, setOtpCode] = useState("");
 
@@ -24,11 +27,18 @@ const Auth = () => {
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
 
   const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [nameError, setNameError] = useState("");
   const [otpError, setOtpError] = useState("");
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
   const [nameTouched, setNameTouched] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [confirmTouched, setConfirmTouched] = useState(false);
   const [otpTouched, setOtpTouched] = useState(false);
 
   const navigate = useNavigate();
@@ -36,6 +46,8 @@ const Auth = () => {
 
   const isNameValid = displayName.trim().length >= 3;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isPasswordValid = password.length >= 6;
+  const isConfirmValid = confirmPassword === password && password.length >= 6;
 
   useEffect(() => {
     if (mode === "signup" && nameTouched) {
@@ -52,27 +64,70 @@ const Auth = () => {
   }, [email, emailTouched, isEmailValid]);
 
   useEffect(() => {
+    if (passwordTouched) {
+      if (!isPasswordValid && password.length > 0) setPasswordError("Password must be at least 6 characters");
+      else setPasswordError("");
+    }
+  }, [password, passwordTouched, isPasswordValid]);
+
+  useEffect(() => {
+    if (mode === "signup" && confirmTouched) {
+      if (!isConfirmValid && confirmPassword.length > 0) setConfirmPasswordError("Passwords do not match");
+      else setConfirmPasswordError("");
+    } else if (mode === "login") setConfirmPasswordError("");
+  }, [confirmPassword, password, mode, confirmTouched, isConfirmValid]);
+
+  useEffect(() => {
     if (otpTouched) {
       if (otpCode.length !== 6 && otpCode.length > 0) setOtpError("Code must be 6 digits");
       else setOtpError("");
     }
   }, [otpCode, otpTouched]);
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validate = () => {
     setNameTouched(true);
     setEmailTouched(true);
+    setPasswordTouched(true);
+    if (mode === "signup") setConfirmTouched(true);
 
-    if (mode === "signup" && !isNameValid) return;
-    if (!isEmailValid) return;
+    let isValid = true;
+    if (mode === "signup" && !isNameValid) { setNameError("Name must be at least 3 characters"); isValid = false; }
+    if (!isEmailValid) { setEmailError("Please enter a valid email address"); isValid = false; }
+    if (!isPasswordValid) { setPasswordError("Password must be at least 6 characters"); isValid = false; }
+    if (mode === "signup" && !isConfirmValid) { setConfirmPasswordError("Passwords do not match"); isValid = false; }
+    return isValid;
+  };
+
+  const handleMainSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      await sendEmailOtp(email, mode === "signup" ? displayName : undefined);
-      setOtpStep(2);
-      toast.success("Login code sent to your email!");
+      if (mode === "signup") {
+        // Sign up triggers Supabase's native email confirmation (which acts as our OTP)
+        await signUpWithEmail({ email, password, displayName });
+        setOtpStep(2);
+        toast.success("Confirmation code sent to your email!");
+      } else {
+        // For login, we verify their password first
+        await signInWithPassword({ email, password });
+
+        // If password is correct, we temporarily sign them out to force the OTP step as a "2FA" simulation
+        await supabase.auth.signOut();
+
+        // Trigger a fresh OTP magic code to their email
+        await sendEmailOtp(email, undefined);
+        setOtpStep(2);
+        toast.success("Login code sent to your email!");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to send code. Please try again.");
+      if (mode === "signup" && /already registered|already exists/i.test(err?.message || "")) {
+        setMode("login");
+        toast.info("Looks like you already have an account. Try signing in.");
+      } else {
+        toast.error(err.message || "Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -89,7 +144,8 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      await verifyEmailOtp(email, otpCode, mode === "signup" ? displayName : undefined);
+      // Use 'signup' type if we are completing a signup, otherwise 'email' type for the login OTP
+      await verifyEmailOtp(email, otpCode, mode === "signup" ? displayName : undefined, mode === "signup" ? 'signup' : 'email');
       setAuthMode(mode);
       setShowPostAuthModal(true);
     } catch (err: any) {
@@ -110,13 +166,14 @@ const Auth = () => {
     navigate(decodeURIComponent(returnTo), { replace: true });
   };
 
-  // Reset states when switching between login/signup
   const toggleMode = () => {
     setMode(mode === "signup" ? "login" : "signup");
     setOtpStep(1);
     setOtpCode("");
     setNameTouched(false);
     setEmailTouched(false);
+    setPasswordTouched(false);
+    setConfirmTouched(false);
     setOtpTouched(false);
   };
 
@@ -161,7 +218,7 @@ const Auth = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                onSubmit={handleSendCode}
+                onSubmit={handleMainSubmit}
                 className="flex flex-col gap-3.5"
               >
                 <AnimatePresence mode="popLayout">
@@ -211,12 +268,90 @@ const Auth = () => {
                   {emailError && <span className="text-red-400 text-[12px] pl-2">{emailError}</span>}
                 </div>
 
+                <div className="flex flex-col gap-1.5">
+                  <div className={`flex items-center gap-3 bg-white/[0.04] border ${passwordError ? 'border-red-500/50' : (passwordTouched && isPasswordValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                    <Lock size={18} className={passwordError ? "text-red-400" : (passwordTouched && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (passwordError && e.target.value.length >= 6) setPasswordError("");
+                      }}
+                      onBlur={() => setPasswordTouched(true)}
+                      required
+                      minLength={6}
+                      className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 text-white/30 hover:text-white/60 transition-colors shrink-0"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {passwordError && <span className="text-red-400 text-[12px] pl-2">{passwordError}</span>}
+                </div>
+
+                <AnimatePresence>
+                  {mode === "signup" && password.length >= 6 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: "auto", opacity: 1, marginTop: 4 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex flex-col gap-1.5"
+                    >
+                      <div className={`flex items-center gap-3 bg-white/[0.04] border ${confirmPasswordError ? 'border-red-500/50' : (confirmTouched && isConfirmValid) ? 'border-blue-500' : 'border-white/[0.06]'} rounded-2xl px-4 py-3.5 transition-colors relative`}>
+                        <Lock size={18} className={confirmPasswordError ? "text-red-400" : (confirmTouched && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Confirm Password"
+                          value={confirmPassword}
+                          onChange={(e) => {
+                            setConfirmPassword(e.target.value);
+                            if (confirmPasswordError && e.target.value === password) setConfirmPasswordError("");
+                          }}
+                          onBlur={() => setConfirmTouched(true)}
+                          required
+                          minLength={6}
+                          className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
+                        />
+                      </div>
+                      {confirmPasswordError && <span className="text-red-400 text-[12px] pl-2">{confirmPasswordError}</span>}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex items-center justify-between mt-1 px-1">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="hidden"
+                    />
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-white text-black border-white' : 'border-white/20 group-hover:border-white/40'}`}>
+                      {rememberMe && <Check size={12} />}
+                    </div>
+                    <span className="text-[12px] text-white/40 group-hover:text-white/60 transition-colors">Remember me</span>
+                  </label>
+
+                  {mode === "login" && (
+                    <button type="button" className="text-[12px] text-white/40 hover:text-white/80 transition-colors">
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full py-3.5 mt-2 rounded-2xl bg-white text-black text-[15px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-40"
                 >
-                  {loading ? "Sending code..." : "Send Login Code"}
+                  {loading ? "Please wait..." : mode === "signup" ? "Sign up" : "Sign in"}
                 </button>
               </motion.form>
             ) : (
@@ -375,4 +510,5 @@ const Auth = () => {
 };
 
 export default Auth;
+
 
