@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, LogOut, Crown, PenSquare, Calendar, Search, Home, Clock, Trash2 } from "lucide-react";
+import { User, LogOut, Crown, PenSquare, Calendar, Search, Home, Clock, Trash2, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneFrame from "@/components/PhoneFrame";
 import { useAuth } from "@/contexts/AuthContext";
 import { isProUser } from "@/services/proService";
 import { supabase } from "@/integrations/supabase/client";
 import PaymentModal from "@/components/PaymentModal";
+import DownloadModal from "@/components/DownloadModal";
+import { toast } from "sonner";
 
 const Account = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
 
     const [designToDelete, setDesignToDelete] = useState<string | null>(null);
+    const [designToDownload, setDesignToDownload] = useState<any | null>(null);
 
     // Profile editing
     const [isEditingName, setIsEditingName] = useState(false);
@@ -103,10 +106,16 @@ const Account = () => {
                 const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
 
                 setAvatarUrl(dataUrl);
-                await supabase.from("profiles").upsert({
-                    user_id: user.id,
+                const { error } = await supabase.from("profiles").update({
                     avatar_url: dataUrl
-                }, { onConflict: "user_id" });
+                }).eq("user_id", user.id);
+
+                if (error) {
+                    console.error("Failed to save avatar to DB:", error);
+                    toast.error("Failed to save profile picture permanently.");
+                } else {
+                    toast.success("Profile picture updated!");
+                }
                 setIsUploading(false);
             };
             img.src = ev.target?.result as string;
@@ -122,7 +131,7 @@ const Account = () => {
         }
     };
 
-    const profilePicUrl = avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName || user?.email || "avatar")}&backgroundColor=222222&radius=50`;
+    const profilePicUrl = avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.id || displayName || "guest"}&backgroundColor=222222&radius=50`;
     const isPro = isProUser();
 
     // Get plan details from localStorage
@@ -304,12 +313,20 @@ const Account = () => {
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-[#555] p-4 text-center text-xs">No thumbnail</div>
                                             )}
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); setDesignToDelete(design.id); }}
-                                                className="absolute top-2 right-2 w-8 h-8 bg-black/50 backdrop-blur disabled rounded-full flex items-center justify-center text-white/50 hover:text-red-400 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                            <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setDesignToDownload(design); }}
+                                                    className="w-8 h-8 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white/70 hover:text-blue-400 hover:bg-black/80 transition-all"
+                                                >
+                                                    <Download size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setDesignToDelete(design.id); }}
+                                                    className="w-8 h-8 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white/70 hover:text-red-400 hover:bg-black/80 transition-all"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="p-3">
                                             <p className="text-xs font-bold truncate text-white">{design.name}</p>
@@ -345,6 +362,7 @@ const Account = () => {
             </div>
 
             <PaymentModal open={showSubscription} onClose={() => setShowSubscription(false)} onSuccess={() => { setShowSubscription(false); window.location.reload(); }} />
+            <DownloadModal open={!!designToDownload} onClose={() => setDesignToDownload(null)} design={designToDownload} />
 
             <AnimatePresence>
                 {designToDelete && (
