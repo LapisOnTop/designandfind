@@ -40,7 +40,7 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
   return (
     <AnimatePresence>
       {open && (
-        <div className="absolute inset-0 z-[100] flex items-end justify-center">
+        <div className="absolute inset-0 z-[999] flex items-end justify-center">
           {/* Dimmed backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
