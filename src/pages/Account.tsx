@@ -21,9 +21,7 @@ const Account = () => {
     const [isEditingName, setIsEditingName] = useState(false);
     const [displayName, setDisplayName] = useState(user?.email?.split('@')[0] || "Guest User");
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [showSubscription, setShowSubscription] = useState(false);
 
@@ -78,52 +76,6 @@ const Account = () => {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !user?.id) return;
-
-        setIsUploading(true);
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const img = new Image();
-            img.onload = async () => {
-                const canvas = document.createElement("canvas");
-                const MAX_WIDTH = 150;
-                const MAX_HEIGHT = 150;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                } else {
-                    if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx?.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-
-                setAvatarUrl(dataUrl);
-                const { error } = await supabase.from("profiles").update({
-                    avatar_url: dataUrl
-                }).eq("user_id", user.id);
-
-                if (error) {
-                    console.error("Failed to save avatar to DB:", error);
-                    toast.error("Failed to save profile picture permanently.");
-                } else {
-                    toast.success("Profile picture updated!");
-                }
-                setIsUploading(false);
-            };
-            img.src = ev.target?.result as string;
-        };
-        reader.readAsDataURL(file);
-        e.target.value = "";
-    };
-
     const handleDeleteAccount = async () => {
         if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
             await supabase.auth.signOut();
@@ -171,16 +123,8 @@ const Account = () => {
                     <section className="space-y-2">
                         <div className="bg-black border border-[#222] rounded-[1.2rem] p-4">
                             <div className="flex items-center gap-4">
-                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                                <div
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="w-14 h-14 rounded-full bg-[#222] flex items-center justify-center text-lg font-bold text-[#888] shrink-0 overflow-hidden cursor-pointer relative group"
-                                >
-                                    <img src={profilePicUrl} alt="Profile" className={`w-full h-full object-cover transition-opacity ${isUploading ? 'opacity-50' : 'group-hover:opacity-50'}`} />
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <PenSquare size={16} className="text-white" />
-                                    </div>
-                                    {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50"><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div></div>}
+                                <div className="w-14 h-14 rounded-full bg-[#222] flex items-center justify-center shrink-0 overflow-hidden relative">
+                                    <img src={profilePicUrl} alt="Profile" className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1 overflow-hidden">
                                     {isEditingName ? (
