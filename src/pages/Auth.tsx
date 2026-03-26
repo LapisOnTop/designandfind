@@ -167,11 +167,13 @@ const Auth = () => {
         if (signedUpUser?.identities && signedUpUser.identities.length === 0) {
           throw new Error("User already registered");
         }
-        // Always sign out and send a fresh OTP so the user sees the 6-digit code screen
+        // Always sign out since the user is not fully verified yet
         if (session) {
           await supabase.auth.signOut();
         }
-        await sendEmailOtp(email, displayName);
+        // Supabase built-in signUp already sends the Confirmation Email OTP. 
+        // We do NOT need to call sendEmailOtp() here, as that triggers the 60s security cooldown!
+
         setStep(2);
         startResendCooldown();
         setStatusMessage({ text: "Verification code sent to your email!", type: "success" });
