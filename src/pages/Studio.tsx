@@ -550,20 +550,31 @@ const Studio = () => {
     try {
       const minScanTime = new Promise(resolve => setTimeout(resolve, 2500));
       const dataUrl = canvasRef.current.toDataURL({ format: "png", quality: 1 });
-      const [apiResponse] = await Promise.all([
-        supabase.functions.invoke("visual-search", { body: { image: dataUrl } }),
-        minScanTime
-      ]);
-      const { data, error } = apiResponse;
-      if (error) throw new Error(error.message);
 
-      let realMatches: ProductResult[] = data?.results || [];
-      // STRICT FILTERING: Only show results with valid numeric prices, exclude "Price N/A"
-      const pricedMatches = realMatches.filter(r => {
-        if (!r.price) return false;
-        const p = r.price.toLowerCase().trim();
-        return p !== "" && p !== "0" && p !== "dynamic" && p !== "price n/a" && p !== "n/a" && /\d/.test(p);
-      });
+      let realMatches: ProductResult[] = [];
+      let pricedMatches: ProductResult[] = [];
+
+      try {
+        const [apiResponse] = await Promise.all([
+          supabase.functions.invoke("visual-search", { body: { image: dataUrl } }),
+          minScanTime
+        ]);
+        const { data, error } = apiResponse;
+        if (error) {
+          console.error("Supabase edge function error:", error);
+        } else {
+          realMatches = data?.results || [];
+          // STRICT FILTERING: Only show results with valid numeric prices, exclude "Price N/A"
+          pricedMatches = realMatches.filter(r => {
+            if (!r.price) return false;
+            const p = r.price.toLowerCase().trim();
+            return p !== "" && p !== "0" && p !== "dynamic" && p !== "price n/a" && p !== "n/a" && /\d/.test(p);
+          });
+        }
+      } catch (apiErr) {
+        console.error("API call failed, falling back to mock data:", apiErr);
+        await minScanTime;
+      }
 
       const colorPrefix = templateColor !== "#ffffff" ? `${getClosestColorName(templateColor)} ` : "";
       const productName = colorPrefix + (pricedMatches[0]?.title || realMatches[0]?.title || "t-shirt design buy");
