@@ -548,8 +548,13 @@ const Studio = () => {
     setIsSearching(true);
     setShowResults(false);
     try {
+      const minScanTime = new Promise(resolve => setTimeout(resolve, 2500));
       const dataUrl = canvasRef.current.toDataURL({ format: "png", quality: 1 });
-      const { data, error } = await supabase.functions.invoke("visual-search", { body: { image: dataUrl } });
+      const [apiResponse] = await Promise.all([
+        supabase.functions.invoke("visual-search", { body: { image: dataUrl } }),
+        minScanTime
+      ]);
+      const { data, error } = apiResponse;
       if (error) throw new Error(error.message);
 
       let realMatches: ProductResult[] = data?.results || [];

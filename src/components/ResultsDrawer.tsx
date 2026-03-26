@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, ExternalLink } from "lucide-react";
+import { X, ExternalLink, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface ProductResult {
