@@ -85,11 +85,11 @@ const ResultsDrawer = ({ open, onClose, results }: ResultsDrawerProps) => {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="absolute bottom-0 left-0 right-0 z-50 backdrop-blur-[20px] bg-black/40 rounded-t-3xl border-t border-white/10 shadow-[0_-20px_40px_rgba(0,0,0,0.3)]"
+          className="absolute bottom-0 left-0 right-0 z-50 backdrop-blur-[20px] bg-black/40 rounded-t-3xl border-t border-white/10 shadow-[0_-20px_40px_rgba(0,0,0,0.3)] flex flex-col"
           style={{ maxHeight: "85%" }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 sticky top-0 z-10 rounded-t-3xl bg-black/60 backdrop-blur-xl">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0 rounded-t-3xl bg-black/60 backdrop-blur-xl">
             <div>
               <h2 className="text-base font-bold text-white tracking-tight">Sourcing Matches</h2>
               <p className="text-xs text-white/50 font-medium">{totalResults} results found globally</p>
@@ -123,7 +123,7 @@ const ResultsDrawer = ({ open, onClose, results }: ResultsDrawerProps) => {
           </div>
 
           {/* Results Grid */}
-          <div className="overflow-y-auto p-4 pb-24" style={{ maxHeight: "calc(85vh - 70px)" }}>
+          <div className="overflow-y-auto p-4 pb-8 flex-1">
             {withPrice.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-xs font-bold text-white/70 tracking-widest uppercase mb-4 px-1 flex items-center gap-2">

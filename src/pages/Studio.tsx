@@ -562,48 +562,33 @@ const Studio = () => {
         const { data, error } = apiResponse;
         if (error) {
           console.error("Supabase edge function error:", error);
+          toast.error("Visual Search Error: " + error.message);
+        } else if (data?.error) {
+          console.error("API Search Error:", data.error);
+          toast.error("API Error: " + data.error);
         } else {
           realMatches = data?.results || [];
-          // STRICT FILTERING: Only show results with valid numeric prices, exclude "Price N/A"
           pricedMatches = realMatches.filter(r => {
             if (!r.price) return false;
             const p = r.price.toLowerCase().trim();
             return p !== "" && p !== "0" && p !== "dynamic" && p !== "price n/a" && p !== "n/a" && /\d/.test(p);
           });
         }
-      } catch (apiErr) {
-        console.error("API call failed, falling back to mock data:", apiErr);
+      } catch (apiErr: any) {
+        console.error("API call failed:", apiErr);
         await minScanTime;
+        toast.error("Network Error: Failed to contact the visual search server.");
       }
 
-      const colorPrefix = templateColor !== "#ffffff" ? `${getClosestColorName(templateColor)} ` : "";
-      const productName = colorPrefix + (pricedMatches[0]?.title || realMatches[0]?.title || "t-shirt design buy");
-      const thumb = pricedMatches[0]?.thumbnail || realMatches[0]?.thumbnail || backgroundUrl || dataUrl;
+      if (pricedMatches.length === 0) {
+        setIsSearching(false);
+        if (!document.querySelector('[data-sonner-toast]')) {
+          toast.error("Visual search returned no exact matches or failed.");
+        }
+        return;
+      }
 
-      // Generate fallback results if real matches are insufficient
-      const randomPrice = () => {
-        const prices = ["$12.99", "$15.50", "$18.99", "$22.00", "$25.99", "$29.99", "$34.50", "$39.99", "$45.00", "$49.99"];
-        return prices[Math.floor(Math.random() * prices.length)];
-      };
-
-      const q = encodeURIComponent(productName);
-      const fallbacks: ProductResult[] = [
-        { title: `${productName} - Premium Quality`, price: randomPrice(), source: "Amazon", thumbnail: thumb, link: `https://www.amazon.com/s?k=${q}` },
-        { title: `${productName} - Best Seller`, price: randomPrice(), source: "eBay", thumbnail: thumb, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
-        { title: `${productName} - Wholesale Price`, price: randomPrice(), source: "AliExpress", thumbnail: thumb, link: `https://www.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html` },
-        { title: `${productName} - Hot Deal`, price: randomPrice(), source: "Temu", thumbnail: thumb, link: `https://www.temu.com/search_result.html?search_key=${q}` },
-        { title: `${productName} - In Stock`, price: randomPrice(), source: "Walmart", thumbnail: thumb, link: `https://www.walmart.com/search?q=${q}` },
-        { title: `${productName} - Local Favorite`, price: randomPrice(), source: "Shopee", thumbnail: thumb, link: `https://shopee.sg/search?keyword=${q}` },
-        { title: `${productName} - Best Price`, price: randomPrice(), source: "Lazada", thumbnail: thumb, link: `https://www.lazada.com.ph/catalog/?q=${q}` },
-        { title: `${productName} - Direct from Factory`, price: randomPrice(), source: "Taobao", thumbnail: thumb, link: `https://s.taobao.com/search?q=${q}` },
-        { title: `${productName} - Handmade`, price: randomPrice(), source: "Etsy", thumbnail: thumb, link: `https://www.etsy.com/search?q=${q}` },
-        { title: `${productName} - Fast Fashion`, price: randomPrice(), source: "Shein", thumbnail: thumb, link: `https://us.shein.com/pdsearch/${q}` },
-        { title: `${productName} - Trending Now`, price: randomPrice(), source: "TikTok Shop", thumbnail: thumb, link: `https://shop.tiktok.com/` },
-        { title: `${productName} - Local Seller`, price: randomPrice(), source: "Facebook", thumbnail: thumb, link: `https://www.facebook.com/marketplace/search/?query=${q}` },
-      ];
-
-      const combined = [...pricedMatches, ...fallbacks];
-      setResults(combined.slice(0, 24));
+      setResults(pricedMatches.slice(0, 24));
       setShowResults(true);
 
       // Increment lookup counters

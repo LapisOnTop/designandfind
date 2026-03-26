@@ -67,29 +67,26 @@ const Landing = () => {
         const { data, error } = apiResponse;
         if (error) {
           console.error("Supabase edge function error:", error);
+          toast.error("Visual Search Error: " + error.message);
+        } else if (data?.error) {
+          console.error("API Search Error:", data.error);
+          toast.error("API Error: " + data.error);
         } else {
           finalResults = (data?.results || []) as ProductResult[];
         }
-      } catch (err) {
-        console.error("Lookup API failed, generating fallbacks:", err);
+      } catch (err: any) {
+        console.error("Lookup API failed:", err);
         await minScanTime;
-        toast.info("Showing mock data (Edge Function not configured).");
+        toast.error("Network Error: Failed to contact the visual search server.");
       }
 
-      // If no valid results were returned, generate mock fallbacks using the uploaded image
       if (finalResults.length === 0) {
-        const randomPrice = () => {
-          const prices = ["$12.99", "$15.50", "$18.99", "$22.00", "$25.99", "$29.99"];
-          return prices[Math.floor(Math.random() * prices.length)];
-        };
-        const productName = "Uploaded Design Product";
-        const q = encodeURIComponent(productName);
-        finalResults = [
-          { title: `${productName} - Premium Quality`, price: randomPrice(), source: "Amazon", thumbnail: dataUrl, link: `https://www.amazon.com/s?k=${q}` },
-          { title: `${productName} - Best Seller`, price: randomPrice(), source: "eBay", thumbnail: dataUrl, link: `https://www.ebay.com/sch/i.html?_nkw=${q}` },
-          { title: `${productName} - Wholesale Price`, price: randomPrice(), source: "AliExpress", thumbnail: dataUrl, link: `https://www.aliexpress.com/w/wholesale-${q.replace(/%20/g, '-')}.html` },
-          { title: `${productName} - Hot Deal`, price: randomPrice(), source: "Temu", thumbnail: dataUrl, link: `https://www.temu.com/search_result.html?search_key=${q}` },
-        ];
+        setIsSearching(false);
+        // Only show this fallback toast if we didn't just throw a specific API error toast
+        if (!document.querySelector('[data-sonner-toast]')) {
+          toast.error("No matches found or search failed.");
+        }
+        return;
       }
 
       setResults(finalResults);
