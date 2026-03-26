@@ -20,7 +20,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (!user) {
     // Preserve the original URL they tried to visit (e.g. /studio?template=cup)
     const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
-    return <Navigate to={`/auth?mode=signup&returnTo=${returnTo}`} replace />;
+    return <Navigate to={`/auth?mode=login&returnTo=${returnTo}`} replace />;
   }
 
   return <>{children}</>;
@@ -30,13 +30,18 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return null;
+  if (loading) {
+    console.log("PublicRoute: loading is true");
+    return null;
+  }
 
   if (user) {
     const returnTo = new URLSearchParams(location.search).get("returnTo");
+    console.log("PublicRoute: redirecting to", returnTo || "/studio");
     return <Navigate to={returnTo ? decodeURIComponent(returnTo) : "/studio"} replace />;
   }
 
+  console.log("PublicRoute: rendering Auth component");
   return <>{children}</>;
 };
 

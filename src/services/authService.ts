@@ -45,18 +45,29 @@ export const signUpWithEmail = async (params: {
     email,
     password,
     options: {
-      emailRedirectTo: window.location.origin,
       data: { display_name: displayName || email },
     },
   });
 
-  if (error) throw error;
+  if (error) {
+    console.error("Signup error:", error);
+    if (error.message.includes("Error sending confirmation email") && error.status === 429) {
+      throw new Error("Supabase email rate limit reached (3 per hour for free tier). Please configure custom SMTP or try again later.");
+    }
+    throw error;
+  }
+
+  // If email confirmation is required and security settings obscure signups,
+  // existing users will return a user object but with an empty identities array.
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    throw new Error("User already registered");
+  }
 
   // When email confirmation is enabled, Supabase returns no session here.
   // Only treat this as an authenticated session when we actually have one.
   if (data.session && data.user) {
     await ensureProfile(data.user, displayName);
-    localStorage.setItem("designMatch_showProAfterLogin", "true");
+    localStorage.setItem(`designMatch_showProAfterLogin_${data.user.id}`, "true");
   }
 
   return data;
@@ -76,12 +87,12 @@ export const signInWithPassword = async (params: {
 
   if (data.user) {
     await ensureProfile(data.user, null);
-  }
 
-  // Only show subscription on first-ever login
-  const alreadySeen = localStorage.getItem("designMatch_subSeen");
-  if (!alreadySeen) {
-    localStorage.setItem("designMatch_showProAfterLogin", "true");
+    // Only show subscription on first-ever login
+    const alreadySeen = localStorage.getItem("designMatch_subSeen");
+    if (!alreadySeen) {
+      localStorage.setItem(`designMatch_showProAfterLogin_${data.user.id}`, "true");
+    }
   }
 
   return data;
@@ -95,6 +106,18 @@ export const sendEmailOtp = async (email: string, displayName?: string) => {
     }
   });
 
+  if (error) throw error;
+  return data;
+};
+
+export const resetPasswordForEmail = async (email: string) => {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+  return data;
+};
+
+export const updateUserPassword = async (password: string) => {
+  const { data, error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
   return data;
 };
@@ -114,10 +137,19 @@ export const verifyEmailOtp = async (email: string, token: string, displayName?:
     // Only show subscription on first-ever login
     const alreadySeen = localStorage.getItem("designMatch_subSeen");
     if (!alreadySeen) {
-      localStorage.setItem("designMatch_showProAfterLogin", "true");
+      localStorage.setItem(`designMatch_showProAfterLogin_${data.user.id}`, "true");
     }
   }
 
+  return data;
+};
+
+export const resendSignupOtp = async (email: string) => {
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+  });
+  if (error) throw error;
   return data;
 };
 

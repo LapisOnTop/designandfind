@@ -24,15 +24,19 @@ const Landing = () => {
   const [results, setResults] = useState<ProductResult[] | null>(null);
 
   const handleUploadClick = () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     const isPro = isProUser();
     if (!isPro) {
-      const weekCount = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
-      const lastReset = parseInt(localStorage.getItem("designMatch_lookup_lastReset") || "0");
+      const weekCount = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
+      const lastReset = parseInt(localStorage.getItem(`designMatch_lookup_lastReset_${user?.id}`) || "0");
       const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
       const now = Date.now();
       if (now - lastReset >= ONE_WEEK) {
-        localStorage.setItem("designMatch_lookup_count_week", "0");
-        localStorage.setItem("designMatch_lookup_lastReset", String(now));
+        localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, "0");
+        localStorage.setItem(`designMatch_lookup_lastReset_${user?.id}`, String(now));
       } else if (weekCount >= 1) {
         const daysLeft = Math.ceil((lastReset + ONE_WEEK - now) / (1000 * 60 * 60 * 24));
         toast.error(`Free limit reached. Resets in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}. Upgrade for unlimited.`);
@@ -76,12 +80,12 @@ const Landing = () => {
       setShowResults(true);
       setIsSearching(false);
 
-      const prev = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
-      localStorage.setItem("designMatch_lookup_count_week", String(prev + 1));
-      const total = parseInt(localStorage.getItem("designMatch_lookupCount") || "0");
-      localStorage.setItem("designMatch_lookupCount", String(total + 1));
-      if (!localStorage.getItem("designMatch_lookup_lastReset")) {
-        localStorage.setItem("designMatch_lookup_lastReset", String(Date.now()));
+      const prev = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
+      localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, String(prev + 1));
+      const total = parseInt(localStorage.getItem(`designMatch_lookupCount_${user?.id}`) || "0");
+      localStorage.setItem(`designMatch_lookupCount_${user?.id}`, String(total + 1));
+      if (!localStorage.getItem(`designMatch_lookup_lastReset_${user?.id}`)) {
+        localStorage.setItem(`designMatch_lookup_lastReset_${user?.id}`, String(Date.now()));
       }
     };
     reader.readAsDataURL(file);
@@ -103,7 +107,7 @@ const Landing = () => {
 
   return (
     <PhoneFrame>
-      <div className="flex flex-col h-full bg-[#050510] relative overflow-hidden font-sans text-white">
+      <div className="flex flex-col h-full bg-black relative overflow-hidden font-sans text-white">
 
         {/* Ambient background removed */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -151,7 +155,10 @@ const Landing = () => {
             </button>
 
             <button
-              onClick={() => setShowTemplatePrompt(true)}
+              onClick={() => {
+                if (!user) { navigate("/auth"); return; }
+                setShowTemplatePrompt(true);
+              }}
               className="w-full py-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-white/60 text-[14px] font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-white/[0.06] hover:text-white/80"
             >
               <PencilRuler size={16} /> Make Design
@@ -160,7 +167,7 @@ const Landing = () => {
         </div>
 
         {/* Bottom nav */}
-        <div className="relative z-20 flex items-center justify-around py-3 pb-6 border-t border-white/[0.04] bg-[#050510]">
+        <div className="relative z-20 flex items-center justify-around py-3 pb-6 border-t border-white/[0.04] bg-black">
           <button onClick={() => setShowResults(false)}
             className="flex flex-col items-center gap-1 text-white/80">
             <Home size={18} />
@@ -183,7 +190,7 @@ const Landing = () => {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 32, stiffness: 320 }}
-                className="w-full bg-[#0c0c10] rounded-t-[2rem] p-5 pb-8 relative"
+                className="w-full bg-black border-t border-white/10 rounded-t-[2rem] p-5 pb-8 relative"
               >
                 <div className="flex justify-center mb-3">
                   <div className="w-9 h-[3px] rounded-full bg-white/15" />

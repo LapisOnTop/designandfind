@@ -44,7 +44,7 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
           className="absolute inset-0 z-[100] flex items-center justify-center p-6 bg-black/80">
 
-          <div className="w-full bg-[#141414] border border-[#222] rounded-2xl relative overflow-hidden flex flex-col max-h-full">
+          <div className="w-full bg-black border border-[#222] rounded-2xl relative overflow-hidden flex flex-col max-h-full">
             {/* Header */}
             <div className="flex items-center justify-end p-4 pb-0 shrink-0 h-14">
               <AnimatePresence>
@@ -78,10 +78,10 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
                     </div>
 
                     {/* Features */}
-                    <div className="space-y-0 relative border border-[#222] rounded-xl overflow-hidden bg-[#0a0a0a]">
+                    <div className="space-y-0 relative border border-[#222] rounded-xl overflow-hidden bg-black">
                       {features.map((f, i) => (
                         <div key={i} className="flex items-center gap-3 p-3 border-b border-[#222] last:border-b-0">
-                          <div className="w-8 h-8 rounded-lg bg-[#141414] flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center shrink-0">
                             {f.icon}
                           </div>
                           <span className="text-sm font-medium text-white">{f.title}</span>
@@ -103,7 +103,7 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
                       </button>
 
                       {/* Monthly Plan */}
-                      <button className="flex items-center justify-between p-3 rounded-xl border border-[#333] bg-[#141414] text-left hover:border-[#444] transition-colors active:scale-95">
+                      <button className="flex items-center justify-between p-3 rounded-xl border border-[#333] bg-black text-left hover:border-[#444] transition-colors active:scale-95">
                         <div>
                           <p className="font-bold text-white text-sm">Monthly</p>
                           <p className="text-xs text-[#888]">₱500 / month</p>
@@ -122,7 +122,7 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
 
             {/* Footer fixed */}
             {!activated && (
-              <div className="p-6 pt-4 bg-[#141414] border-t border-[#222] shrink-0">
+              <div className="p-6 pt-4 bg-black border-t border-[#222] shrink-0">
                 <button
                   disabled={isProcessing}
                   onClick={handleProcessPayment}

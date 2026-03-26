@@ -1,27 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Mail, Lock, User, Crown, Check, Eye, EyeOff, KeyRound } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft, Mail, Lock, User, Crown, Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
+
 import PhoneFrame from "@/components/PhoneFrame";
-import { signUpWithEmail, signInWithPassword, sendEmailOtp, verifyEmailOtp } from "@/services/authService";
+import { signUpWithEmail, signInWithPassword, sendEmailOtp, verifyEmailOtp, resetPasswordForEmail, updateUserPassword, resendSignupOtp } from "@/services/authService";
 import { supabase } from "@/integrations/supabase/client";
 import { isProUser } from "@/services/proService";
 import PaymentModal from "@/components/PaymentModal";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
-  const initialMode = searchParams.get("mode") === "login" ? "login" : "signup";
-  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const initialMode = searchParams.get("mode") === "signup" ? "signup" : searchParams.get("mode") === "forgot_password" ? "forgot_password" : "login";
+  const [mode, setMode] = useState<"login" | "signup" | "forgot_password">(initialMode as any);
 
-  const [otpStep, setOtpStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newConfirmPassword, setNewConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [showPostAuthModal, setShowPostAuthModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
@@ -31,6 +34,7 @@ const Auth = () => {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [nameError, setNameError] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -40,6 +44,26 @@ const Auth = () => {
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmTouched, setConfirmTouched] = useState(false);
   const [otpTouched, setOtpTouched] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startResendCooldown = () => {
+    setResendCooldown(60);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => {
+    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
+  }, []);
 
   const navigate = useNavigate();
   const returnTo = searchParams.get("returnTo") || "/studio";
@@ -48,12 +72,14 @@ const Auth = () => {
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isPasswordValid = password.length >= 6;
   const isConfirmValid = confirmPassword === password && password.length >= 6;
+  const isNewPasswordValid = newPassword.length >= 6;
+  const isNewConfirmValid = newConfirmPassword === newPassword && newPassword.length >= 6;
 
   useEffect(() => {
     if (mode === "signup" && nameTouched) {
       if (!isNameValid) setNameError("Name must be at least 3 characters");
       else setNameError("");
-    } else if (mode === "login") setNameError("");
+    } else if (mode !== "signup") setNameError("");
   }, [displayName, mode, nameTouched, isNameValid]);
 
   useEffect(() => {
@@ -64,22 +90,30 @@ const Auth = () => {
   }, [email, emailTouched, isEmailValid]);
 
   useEffect(() => {
-    if (passwordTouched) {
+    if (step === 1 && passwordTouched) {
       if (!isPasswordValid && password.length > 0) setPasswordError("Password must be at least 6 characters");
       else setPasswordError("");
+    } else if (step === 3 && passwordTouched) {
+      if (!isNewPasswordValid && newPassword.length > 0) setPasswordError("Password must be at least 6 characters");
+      else setPasswordError("");
     }
-  }, [password, passwordTouched, isPasswordValid]);
+  }, [password, newPassword, passwordTouched, step, isPasswordValid, isNewPasswordValid]);
 
   useEffect(() => {
     if (mode === "signup" && confirmTouched) {
       if (!isConfirmValid && confirmPassword.length > 0) setConfirmPasswordError("Passwords do not match");
       else setConfirmPasswordError("");
-    } else if (mode === "login") setConfirmPasswordError("");
-  }, [confirmPassword, password, mode, confirmTouched, isConfirmValid]);
+    } else if (mode === "forgot_password" && step === 3 && confirmTouched) {
+      if (!isNewConfirmValid && newConfirmPassword.length > 0) setConfirmPasswordError("Passwords do not match");
+      else setConfirmPasswordError("");
+    } else {
+      setConfirmPasswordError("");
+    }
+  }, [confirmPassword, password, newConfirmPassword, newPassword, mode, step, confirmTouched, isConfirmValid, isNewConfirmValid]);
 
   useEffect(() => {
     if (otpTouched) {
-      if (otpCode.length !== 6 && otpCode.length > 0) setOtpError("Code must be 6 digits");
+      if (otpCode.length !== 6 && otpCode.length > 0) setOtpError("Code must be 6 characters");
       else setOtpError("");
     }
   }, [otpCode, otpTouched]);
@@ -88,45 +122,91 @@ const Auth = () => {
     setNameTouched(true);
     setEmailTouched(true);
     setPasswordTouched(true);
-    if (mode === "signup") setConfirmTouched(true);
+    if (mode === "signup" || (mode === "forgot_password" && step === 3)) setConfirmTouched(true);
 
     let isValid = true;
     if (mode === "signup" && !isNameValid) { setNameError("Name must be at least 3 characters"); isValid = false; }
-    if (!isEmailValid) { setEmailError("Please enter a valid email address"); isValid = false; }
-    if (!isPasswordValid) { setPasswordError("Password must be at least 6 characters"); isValid = false; }
-    if (mode === "signup" && !isConfirmValid) { setConfirmPasswordError("Passwords do not match"); isValid = false; }
+    if (step === 1) {
+      if (!isEmailValid) { setEmailError("Please enter a valid email address"); isValid = false; }
+      if (mode !== "forgot_password" && !isPasswordValid) { setPasswordError("Password must be at least 6 characters"); isValid = false; }
+      if (mode === "signup" && !isConfirmValid) { setConfirmPasswordError("Passwords do not match"); isValid = false; }
+    } else if (mode === "forgot_password" && step === 3) {
+      if (!isNewPasswordValid) { setPasswordError("Password must be at least 6 characters"); isValid = false; }
+      if (!isNewConfirmValid) { setConfirmPasswordError("Passwords do not match"); isValid = false; }
+    }
     return isValid;
   };
+
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: "", color: "bg-transparent", width: "0%" };
+    let score = 0;
+    if (pass.length >= 6) score += 1;
+    if (pass.length >= 8) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[a-z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    const finalScore = Math.min(5, score);
+    if (finalScore < 3) return { score: finalScore, label: "Weak", color: "bg-red-500", width: "33%" };
+    if (finalScore < 5) return { score: finalScore, label: "Medium", color: "bg-yellow-500", width: "66%" };
+    return { score: finalScore, label: "Strong", color: "bg-green-500", width: "100%" };
+  };
+
+  const currentStrength = getPasswordStrength(mode === "forgot_password" ? newPassword : password);
 
   const handleMainSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
     setLoading(true);
+    setStatusMessage(null);
     try {
       if (mode === "signup") {
-        // Sign up triggers Supabase's native email confirmation (which acts as our OTP)
-        await signUpWithEmail({ email, password, displayName });
-        setOtpStep(2);
-        toast.success("Confirmation code sent to your email!");
-      } else {
-        // For login, we verify their password first
+        const { session, user: signedUpUser } = await signUpWithEmail({ email, password, displayName });
+        if (signedUpUser?.identities && signedUpUser.identities.length === 0) {
+          throw new Error("User already registered");
+        }
+        // Always sign out and send a fresh OTP so the user sees the 6-digit code screen
+        if (session) {
+          await supabase.auth.signOut();
+        }
+        await sendEmailOtp(email, displayName);
+        setStep(2);
+        startResendCooldown();
+        setStatusMessage({ text: "Verification code sent to your email!", type: "success" });
+      } else if (mode === "login") {
         await signInWithPassword({ email, password });
-
-        // If password is correct, we temporarily sign them out to force the OTP step as a "2FA" simulation
         await supabase.auth.signOut();
-
-        // Trigger a fresh OTP magic code to their email
         await sendEmailOtp(email, undefined);
-        setOtpStep(2);
-        toast.success("Login code sent to your email!");
+        setStep(2);
+        startResendCooldown();
+        setStatusMessage({ text: "Login code sent to your email!", type: "success" });
+      } else if (mode === "forgot_password") {
+        await resetPasswordForEmail(email);
+        setStep(2);
+        startResendCooldown();
+        setStatusMessage({ text: "Verification code sent to your email!", type: "success" });
       }
     } catch (err: any) {
       if (mode === "signup" && /already registered|already exists/i.test(err?.message || "")) {
         setMode("login");
-        toast.info("Looks like you already have an account. Try signing in.");
+        setStatusMessage({ text: "Looks like you already have an account. Try signing in.", type: "info" });
+      } else if (/email not confirmed/i.test(err?.message || "")) {
+        try {
+          await sendEmailOtp(email, undefined);
+          setStep(2);
+          startResendCooldown();
+          setStatusMessage({ text: "Please verify your email first. New code sent!", type: "success" });
+        } catch (otpErr: any) {
+          setStatusMessage({ text: otpErr?.message || "Could not send verification code.", type: "error" });
+        }
+      } else if (/invalid login credentials/i.test(err?.message || "")) {
+        setStatusMessage({ text: "Wrong email or password. Please try again.", type: "error" });
+      } else if (/Error sending confirmation email/i.test(err?.message || "") || /rate limit/i.test(err?.message || "")) {
+        setStatusMessage({ text: "Supabase email limit reached. Please configure SMTP or disable 'Confirm Email' in Supabase Auth settings.", type: "error" });
       } else {
-        toast.error(err.message || "Something went wrong. Please try again.");
+        setStatusMessage({ text: err.message || "Something went wrong. Please try again.", type: "error" });
       }
     } finally {
       setLoading(false);
@@ -138,18 +218,46 @@ const Auth = () => {
     setOtpTouched(true);
 
     if (otpCode.length !== 6) {
-      setOtpError("Code must be 6 digits");
+      setOtpError("Code must be 6 characters");
       return;
     }
 
     setLoading(true);
     try {
-      // Use 'signup' type if we are completing a signup, otherwise 'email' type for the login OTP
-      await verifyEmailOtp(email, otpCode, mode === "signup" ? displayName : undefined, mode === "signup" ? 'signup' : 'email');
-      setAuthMode(mode);
-      setShowPostAuthModal(true);
+      if (mode === "forgot_password") {
+        await verifyEmailOtp(email, otpCode, undefined, 'recovery');
+        setStep(3);
+        setStatusMessage({ text: "Code verified! Set your new password below.", type: "success" });
+      } else {
+        await verifyEmailOtp(email, otpCode, mode === "signup" ? displayName : undefined, mode === "signup" ? 'signup' : 'email');
+        setAuthMode(mode);
+        setIsSuccess(true);
+        setTimeout(() => {
+          setShowPostAuthModal(true);
+        }, 800);
+      }
     } catch (err: any) {
-      toast.error(err.message || "Invalid code. Please try again.");
+      setStatusMessage({ text: err.message || "Invalid code. Please try again.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setLoading(true);
+    try {
+      await updateUserPassword(newPassword);
+      setAuthMode("login");
+      setIsSuccess(true);
+      setStatusMessage({ text: "Password updated successfully!", type: "success" });
+      setTimeout(() => {
+        setShowPostAuthModal(true);
+      }, 800);
+    } catch (err: any) {
+      setStatusMessage({ text: err.message || "Could not update password.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -166,28 +274,60 @@ const Auth = () => {
     navigate(decodeURIComponent(returnTo), { replace: true });
   };
 
-  const toggleMode = () => {
-    setMode(mode === "signup" ? "login" : "signup");
-    setOtpStep(1);
-    setOtpCode("");
-    setNameTouched(false);
-    setEmailTouched(false);
-    setPasswordTouched(false);
-    setConfirmTouched(false);
-    setOtpTouched(false);
+  const toggleMode = (newMode: "login" | "signup" | "forgot_password") => {
+    setMode(newMode);
+    setStatusMessage(null);
+    setEmailError("");
+    setPasswordError("");
+    setNameError("");
+    setConfirmPasswordError("");
+    setOtpError("");
+    if (newMode !== mode) {
+      setPassword("");
+      setStep(1);
+      setOtpCode("");
+      setNameTouched(false);
+      setEmailTouched(false);
+      setPasswordTouched(false);
+      setConfirmTouched(false);
+      setOtpTouched(false);
+    }
+  };
+
+  const renderPasswordStrength = () => {
+    if (!currentStrength.score || (mode === "login") || (mode === "forgot_password" && step !== 3)) return null;
+    return (
+      <div className="flex flex-col gap-1.5 mt-1 px-1">
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] text-white/50">Password strength</span>
+          <span className={`text-[12px] font-medium ${currentStrength.color.replace('bg-', 'text-')}`}>
+            {currentStrength.label}
+          </span>
+        </div>
+        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden flex">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: currentStrength.width }}
+            className={`h-full ${currentStrength.color} transition-all duration-300`}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
     <PhoneFrame>
-      <div className="flex flex-col h-full bg-[#050510] relative overflow-hidden">
+      <div className="flex flex-col h-full bg-black relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none overflow-hidden"></div>
 
         <div className="relative z-10 px-5 pt-14 pb-2">
           <button
             onClick={() => {
-              if (otpStep === 2) {
-                setOtpStep(1);
+              if (step > 1) {
+                setStep(1);
                 setOtpCode("");
+              } else if (mode === "forgot_password") {
+                toggleMode("login");
               } else {
                 navigate("/");
               }
@@ -202,17 +342,34 @@ const Auth = () => {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-          className="relative z-10 flex-1 flex flex-col px-7 pt-8 overflow-y-auto hide-scrollbar"
+          className="relative z-10 flex-1 flex flex-col px-7 pt-4 overflow-y-auto hide-scrollbar"
         >
           <h1 className="text-[28px] font-bold tracking-tight text-white leading-tight">
-            {otpStep === 2 ? "Check your email" : mode === "signup" ? "Create account" : "Welcome back"}
+            {step === 2 ? "Check your email" : step === 3 ? "Create new password" : mode === "signup" ? "Create account" : mode === "forgot_password" ? "Reset password" : "Welcome back"}
           </h1>
-          <p className="text-[14px] text-white/40 mt-2 mb-10 font-normal">
-            {otpStep === 2 ? `We sent a code to ${email}` : mode === "signup" ? "Get started with DesignMatch" : "Sign in to continue"}
+          <p className="text-[14px] text-white/40 mt-2 mb-4 font-normal">
+            {step === 2 ? `We sent a code to ${email}` : step === 3 ? "Enter a strong new password" : mode === "signup" ? "Get started with DesignMatch" : mode === "forgot_password" ? "Enter your email to receive a reset code" : "Sign in to continue"}
           </p>
 
+          <AnimatePresence>
+            {statusMessage && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.25 }}
+                className={`rounded-xl px-4 py-3 text-[13px] font-medium border ${statusMessage.type === "success" ? "bg-green-500/10 border-green-500/20 text-green-400"
+                  : statusMessage.type === "error" ? "bg-red-500/10 border-red-500/20 text-red-400"
+                    : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                  }`}
+              >
+                {statusMessage.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <AnimatePresence mode="wait">
-            {otpStep === 1 ? (
+            {step === 1 ? (
               <motion.form
                 key="step1"
                 initial={{ opacity: 0, x: -20 }}
@@ -268,32 +425,44 @@ const Auth = () => {
                   {emailError && <span className="text-red-400 text-[12px] pl-2">{emailError}</span>}
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${passwordError ? 'border-red-500/50' : (password.length > 0 && isPasswordValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
-                    <Lock size={18} className={passwordError ? "text-red-400" : (password.length > 0 && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (passwordError && e.target.value.length >= 6) setPasswordError("");
-                      }}
-                      onBlur={() => setPasswordTouched(true)}
-                      required
-                      minLength={6}
-                      className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 text-white/30 hover:text-white/60 transition-colors shrink-0"
+                <AnimatePresence>
+                  {mode !== "forgot_password" && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex flex-col gap-1.5"
                     >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  {passwordError && <span className="text-red-400 text-[12px] pl-2">{passwordError}</span>}
-                </div>
+                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${passwordError ? 'border-red-500/50' : (password.length > 0 && isPasswordValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
+                        <Lock size={18} className={passwordError ? "text-red-400" : (password.length > 0 && isPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Password"
+                          value={password}
+                          onChange={(e) => {
+                            setPassword(e.target.value);
+                            if (passwordError && e.target.value.length >= 6) setPasswordError("");
+                          }}
+                          onBlur={() => setPasswordTouched(true)}
+                          required={mode !== "forgot_password"}
+                          minLength={6}
+                          className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 text-white/30 hover:text-white/60 transition-colors shrink-0"
+                        >
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      {passwordError && <span className="text-red-400 text-[12px] pl-2">{passwordError}</span>}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {renderPasswordStrength()}
 
                 <AnimatePresence>
                   {mode === "signup" && password.length >= 6 && (
@@ -305,7 +474,7 @@ const Auth = () => {
                       className="flex flex-col gap-1.5"
                     >
                       <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${confirmPasswordError ? 'border-red-500/50' : (confirmPassword.length > 0 && isConfirmValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
-                        <Lock size={18} className={confirmPasswordError ? "text-red-400" : (confirmPassword.length > 0 && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                        <ShieldCheck size={18} className={confirmPasswordError ? "text-red-400" : (confirmPassword.length > 0 && isConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
                         <input
                           type={showPassword ? "text" : "password"}
                           placeholder="Confirm Password"
@@ -315,7 +484,7 @@ const Auth = () => {
                             if (confirmPasswordError && e.target.value === password) setConfirmPasswordError("");
                           }}
                           onBlur={() => setConfirmTouched(true)}
-                          required
+                          required={mode === "signup"}
                           minLength={6}
                           className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
                         />
@@ -325,36 +494,36 @@ const Auth = () => {
                   )}
                 </AnimatePresence>
 
-                <div className="flex items-center justify-between mt-1 px-1">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="hidden"
-                    />
-                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-white text-black border-white' : 'border-white/20 group-hover:border-white/40'}`}>
-                      {rememberMe && <Check size={12} />}
-                    </div>
-                    <span className="text-[12px] text-white/40 group-hover:text-white/60 transition-colors">Remember me</span>
-                  </label>
+                {mode === "login" && (
+                  <div className="flex items-center justify-between mt-1 px-1">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="hidden"
+                      />
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${rememberMe ? 'bg-white text-black border-white' : 'border-white/20 group-hover:border-white/40'}`}>
+                        {rememberMe && <Check size={12} />}
+                      </div>
+                      <span className="text-[12px] text-white/40 group-hover:text-white/60 transition-colors">Remember me</span>
+                    </label>
 
-                  {mode === "login" && (
-                    <button type="button" className="text-[12px] text-white/40 hover:text-white/80 transition-colors">
+                    <button type="button" onClick={() => toggleMode("forgot_password")} className="text-[12px] text-white/40 hover:text-white/80 transition-colors">
                       Forgot password?
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full py-4 mt-2 rounded-2xl bg-white text-black text-[15px] font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] active:scale-[0.98] transition-all disabled:opacity-40 disabled:shadow-none"
                 >
-                  {loading ? "Please wait..." : mode === "signup" ? "Sign up" : "Sign in"}
+                  {loading ? "Please wait..." : mode === "signup" ? "Sign up" : mode === "forgot_password" ? "Send Reset Code" : "Sign in"}
                 </button>
               </motion.form>
-            ) : (
+            ) : step === 2 ? (
               <motion.form
                 key="step2"
                 initial={{ opacity: 0, x: 20 }}
@@ -364,13 +533,14 @@ const Auth = () => {
                 className="flex flex-col gap-6 pt-2"
               >
                 <div className="flex flex-col items-center gap-2">
-                  <div className="relative flex justify-center gap-2 w-full max-w-[280px] mx-auto">
+                  <div className="relative flex justify-center gap-1.5 w-full max-w-sm mx-auto px-1">
                     <input
+                      id="otp-input"
                       type="text"
                       maxLength={6}
                       value={otpCode}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6);
                         setOtpCode(val);
                         if (otpError && val.length === 6) setOtpError("");
                       }}
@@ -380,29 +550,39 @@ const Auth = () => {
                     />
                     {[...Array(6)].map((_, i) => {
                       const char = otpCode[i] || "";
-                      const isActive = otpCode.length === i;
+                      const isActive = otpCode.length === i && !isSuccess;
                       const isFilled = otpCode.length > i;
                       return (
-                        <div
+                        <motion.div
                           key={i}
+                          initial={{ scale: 0.9, opacity: 0 }}
+                          animate={{ scale: isFilled ? 1.05 : 1, opacity: 1 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 25 }}
                           className={`
-                            w-10 h-12 sm:w-12 sm:h-14 flex items-center justify-center text-xl font-bold rounded-xl transition-all duration-200
-                            ${otpError ? "bg-red-500/10 border-red-500/50 text-red-500"
-                              : isActive ? "bg-blue-500/10 border-blue-500 text-blue-400 scale-[1.03] shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                                : isFilled ? "bg-white/[0.08] border-white/20 text-white"
-                                  : "bg-white/[0.02] border-white/[0.05] text-white/30"}
-                            border relative overflow-hidden backdrop-blur-sm
+                            w-[34px] h-[48px] sm:w-[38px] sm:h-[54px] flex items-center justify-center text-lg sm:text-xl font-bold rounded-xl transition-all duration-300
+                            ${isSuccess ? "bg-green-500 border-green-400 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] scale-[1.05] z-20"
+                              : otpError ? "bg-red-500/10 border-red-500/50 text-red-500"
+                                : isActive ? "bg-blue-500/15 border-blue-400 text-blue-300 scale-[1.08] shadow-[0_0_20px_rgba(59,130,246,0.3)] z-20"
+                                  : isFilled ? "bg-white/[0.08] border-white/30 text-white shadow-sm"
+                                    : "bg-white/[0.03] border-white/[0.08] text-white/30"}
+                            border relative overflow-hidden backdrop-blur-md
                           `}
                         >
                           {isActive && (
                             <motion.div
                               animate={{ opacity: [1, 0, 1] }}
                               transition={{ repeat: Infinity, duration: 1 }}
-                              className="w-px h-5 bg-blue-400 absolute"
+                              className="w-[1.5px] h-5 bg-blue-400 absolute rounded-full"
                             />
                           )}
-                          <span className="relative z-10 font-mono">{char}</span>
-                        </div>
+                          <motion.span
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: char ? 1 : 0.5, opacity: char ? 1 : 0 }}
+                            className="relative z-10 font-mono"
+                          >
+                            {char}
+                          </motion.span>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -421,25 +601,123 @@ const Auth = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={loading || otpCode.length !== 6}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[15px] font-bold active:scale-[0.98] transition-transform disabled:opacity-50 disabled:from-white/10 disabled:to-white/10 disabled:text-white/40 shadow-[0_0_20px_rgba(59,130,246,0.3)] disabled:shadow-none"
+                    disabled={loading || otpCode.length !== 6 || isSuccess}
+                    className="w-full py-4 mt-2 rounded-2xl bg-white text-black text-[15px] font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] active:scale-[0.98] transition-all disabled:opacity-40 disabled:shadow-none"
                   >
-                    {loading ? "Verifying..." : "Secure Login"}
+                    {loading ? "Verifying..." : "Verify Code"}
                   </button>
                   <div className="text-center mt-4">
-                    <button type="button" onClick={() => sendEmailOtp(email, undefined)} className="text-[13px] text-white/40 hover:text-white/80 transition-colors">
-                      Didn't receive the code? <span className="text-blue-400">Resend</span>
+                    <button
+                      type="button"
+                      disabled={resendCooldown > 0}
+                      onClick={async () => {
+                        if (resendCooldown > 0) return;
+                        startResendCooldown();
+                        try {
+                          if (mode === "forgot_password") {
+                            await resetPasswordForEmail(email);
+                          } else if (mode === "signup") {
+                            await resendSignupOtp(email);
+                          } else {
+                            await sendEmailOtp(email, undefined);
+                          }
+                          setStatusMessage({ text: "Code resent to your email!", type: "success" });
+                        } catch (err: any) {
+                          setStatusMessage({ text: "Could not resend code. " + err.message, type: "error" });
+                        }
+                      }}
+                      className={`text-[13px] transition-colors ${resendCooldown > 0 ? 'text-white/20 cursor-not-allowed' : 'text-white/40 hover:text-white/80'}`}
+                    >
+                      {resendCooldown > 0
+                        ? `Resend code in ${resendCooldown}s`
+                        : <>Didn't receive the code? <span className="text-blue-400">Resend</span></>}
                     </button>
                   </div>
                 </div>
+              </motion.form>
+            ) : (
+              <motion.form
+                key="step3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                onSubmit={handleUpdatePassword}
+                className="flex flex-col gap-3.5 pt-2"
+              >
+                <div className="flex flex-col gap-1.5">
+                  <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${passwordError ? 'border-red-500/50' : (newPassword.length > 0 && isNewPasswordValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
+                    <Lock size={18} className={passwordError ? "text-red-400" : (newPassword.length > 0 && isNewPasswordValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="New Password"
+                      value={newPassword}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        if (passwordError && e.target.value.length >= 6) setPasswordError("");
+                      }}
+                      onBlur={() => setPasswordTouched(true)}
+                      required
+                      minLength={6}
+                      className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 text-white/30 hover:text-white/60 transition-colors shrink-0"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {passwordError && <span className="text-red-400 text-[12px] pl-2">{passwordError}</span>}
+                </div>
+
+                {renderPasswordStrength()}
+
+                <AnimatePresence>
+                  {newPassword.length >= 6 && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: "auto", opacity: 1, marginTop: 4 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex flex-col gap-1.5"
+                    >
+                      <div className={`flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.05] border ${confirmPasswordError ? 'border-red-500/50' : (newConfirmPassword.length > 0 && isNewConfirmValid) ? 'border-blue-500/50' : 'border-white/[0.08]'} rounded-2xl px-4 py-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 backdrop-blur-md relative`}>
+                        <ShieldCheck size={18} className={confirmPasswordError ? "text-red-400" : (newConfirmPassword.length > 0 && isNewConfirmValid) ? "text-blue-400" : "text-white/25 shrink-0"} />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Confirm New Password"
+                          value={newConfirmPassword}
+                          onChange={(e) => {
+                            setNewConfirmPassword(e.target.value);
+                            if (confirmPasswordError && e.target.value === newPassword) setConfirmPasswordError("");
+                          }}
+                          onBlur={() => setConfirmTouched(true)}
+                          required
+                          minLength={6}
+                          className="flex-1 bg-transparent text-[15px] text-white placeholder:text-white/25 outline-none pr-8"
+                        />
+                      </div>
+                      {confirmPasswordError && <span className="text-red-400 text-[12px] pl-2">{confirmPasswordError}</span>}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-4 mt-4 rounded-2xl bg-white text-black text-[15px] font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] active:scale-[0.98] transition-all disabled:opacity-40 disabled:shadow-none"
+                >
+                  {loading ? "Updating..." : "Update Password"}
+                </button>
               </motion.form>
             )}
           </AnimatePresence>
 
           <div className="mt-auto pt-8 pb-10 flex justify-center">
-            {otpStep === 1 && (
+            {step === 1 && (
               <button
-                onClick={toggleMode}
+                onClick={() => toggleMode(mode === "signup" ? "login" : "signup")}
                 className="text-[13px] text-white/30 font-normal"
               >
                 {mode === "signup" ? (
@@ -551,5 +829,3 @@ const Auth = () => {
 };
 
 export default Auth;
-
-

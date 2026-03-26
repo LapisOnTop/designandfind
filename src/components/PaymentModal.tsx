@@ -56,7 +56,7 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 320 }}
-            className="relative z-10 w-full max-h-[92%] bg-[#0c0c10] rounded-t-[2rem] overflow-hidden flex flex-col"
+            className="relative z-10 w-full max-h-[92%] bg-black rounded-t-[2rem] overflow-hidden flex flex-col"
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1">

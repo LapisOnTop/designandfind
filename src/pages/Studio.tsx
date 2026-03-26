@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { fabric } from "fabric";
 import { AnimatePresence } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import PhoneFrame from "@/components/PhoneFrame";
 import HeaderBar from "@/components/HeaderBar";
 import CanvasEditor from "@/components/CanvasEditor";
@@ -37,6 +38,7 @@ function getClosestColorName(hex: string): string {
 }
 
 const Studio = () => {
+  const { user } = useAuth();
   const canvasRef = useRef<fabric.Canvas | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -44,8 +46,11 @@ const Studio = () => {
   const [showSubscription, setShowSubscription] = useState(false);
   const [results, setResults] = useState<ProductResult[] | null>(null);
 
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [currentSaveName, setCurrentSaveName] = useState("");
+
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [templateColor, setTemplateColor] = useState<string>("#ffffff");
   const [showBg, setShowBg] = useState(true);
@@ -80,8 +85,8 @@ const Studio = () => {
   const backgroundUrl = customTemplateUrl || (templateId && TEMPLATE_IMAGES[templateId]) || TEMPLATE_IMAGES["tshirt"];
   const logoUrl = uploadDataUrl || undefined;
   const loadId = searchParams.get("loadId");
-  const savedState = loadId
-    ? (localStorage.getItem(`designMatch_saved_${loadId}`) || undefined)
+  const savedState = loadId && user?.id
+    ? (localStorage.getItem(`designMatch_saved_${loadId}_${user.id}`) || undefined)
     : undefined;
 
   // Modal open detection for toolbar hiding
@@ -414,45 +419,76 @@ const Studio = () => {
     }
   };
 
-  const handleSave = useCallback(() => {
+  const handleSaveClick = useCallback(() => {
     if (!canvasRef.current || !templateId) return;
+    const historyStr = localStorage.getItem(`designMatch_history_${user?.id}`) || "[]";
+    const historyItems = JSON.parse(historyStr) as any[];
+
+    const loadId = searchParams.get("loadId");
+    const existingDesign = loadId ? historyItems.find(d => d.id === loadId) : null;
+
+    if (!existingDesign && historyItems.length >= (isProUser() ? 20 : 3)) {
+      setShowSubscription(true);
+      return;
+    }
+
+    const defaultName = existingDesign ? existingDesign.name : `Design ${Date.now().toString().slice(-4)}`;
+    setCurrentSaveName(defaultName);
+    setShowSaveModal(true);
+  }, [templateId, searchParams, user?.id]);
+
+  const confirmSave = useCallback((finalName: string) => {
+    if (!canvasRef.current || !templateId) return;
+    setShowSaveModal(false);
+
     try {
-      const isPro = isProUser();
-      const maxSlots = isPro ? 20 : 3;
-      const historyStr = localStorage.getItem("designMatch_history") || "[]";
+      const historyStr = localStorage.getItem(`designMatch_history_${user?.id}`) || "[]";
       let historyItems = JSON.parse(historyStr) as any[];
 
-      const saveId = Date.now().toString();
+      const loadId = searchParams.get("loadId");
+      const existingDesign = loadId ? historyItems.find(d => d.id === loadId) : null;
 
-      if (historyItems.length >= maxSlots) {
-        setShowSubscription(true);
-        return;
-      }
+      const designName = finalName.trim() || (existingDesign ? existingDesign.name : `Design ${Date.now().toString().slice(-4)}`);
+      const finalSaveId = loadId || Date.now().toString();
 
       const gridLines = canvasRef.current.getObjects().filter(o => o.name && o.name.startsWith("gridLine"));
       gridLines.forEach(l => l.set("visible", false));
 
-      const thumbnail = canvasRef.current.toDataURL({ format: "jpeg", quality: 0.1, multiplier: 0.3 });
+      const thumbnail = canvasRef.current.toDataURL({ format: "jpeg", quality: 0.8, multiplier: 1 });
 
       gridLines.forEach(l => l.set("visible", true));
 
       const meta = {
-        id: saveId,
-        name: `Design ${saveId.slice(-4)}`,
+        id: finalSaveId,
+        name: designName,
         date: new Date().toLocaleDateString(),
         thumbnail,
         templateId,
         activeView
       };
 
-      historyItems.unshift(meta);
-      localStorage.setItem("designMatch_history", JSON.stringify(historyItems));
+      if (existingDesign) {
+        historyItems = historyItems.map(d => d.id === finalSaveId ? meta : d);
+      } else {
+        historyItems.unshift(meta);
+      }
+
+      localStorage.setItem(`designMatch_history_${user?.id}`, JSON.stringify(historyItems));
 
       const json = canvasRef.current.toJSON(["name", "opacity", "selectable", "evented"]);
-      localStorage.setItem(`designMatch_saved_${saveId}`, JSON.stringify(json));
-      alert("Saved to History!");
+      localStorage.setItem(`designMatch_saved_${finalSaveId}_${user?.id}`, JSON.stringify(json));
+
+      if (!loadId) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set("loadId", finalSaveId);
+        setSearchParams(newParams, { replace: true });
+      }
+
+      toast.success("Design saved successfully! View it in your Account.", {
+        description: "Your design has been added to History.",
+      });
     } catch (err) { console.error(err); }
-  }, [templateId, activeView]);
+  }, [templateId, activeView, searchParams, setSearchParams, user?.id]);
 
   const handleExport = useCallback(() => {
     const canvas = canvasRef.current;
@@ -492,14 +528,14 @@ const Studio = () => {
     // Check lookup limit for free users
     if (!isProUser()) {
       const now = Date.now();
-      const lastReset = parseInt(localStorage.getItem("designMatch_lookup_lastReset") || "0");
-      const lookupsThisWeek = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
+      const lastReset = parseInt(localStorage.getItem(`designMatch_lookup_lastReset_${user?.id}`) || "0");
+      const lookupsThisWeek = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
       const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
 
       if (now - lastReset > ONE_WEEK) {
         // Reset weekly limit
-        localStorage.setItem("designMatch_lookup_lastReset", now.toString());
-        localStorage.setItem("designMatch_lookup_count_week", "0");
+        localStorage.setItem(`designMatch_lookup_lastReset_${user?.id}`, now.toString());
+        localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, "0");
       } else if (lookupsThisWeek >= 1) {
         setShowSubscription(true);
         toast.error("Weekly lookup limit reached. Upgrade to Pro for unlimited searches!", {
@@ -555,12 +591,12 @@ const Studio = () => {
       setShowResults(true);
 
       // Increment lookup counters
-      const totalCount = parseInt(localStorage.getItem("designMatch_lookupCount") || "0");
-      localStorage.setItem("designMatch_lookupCount", (totalCount + 1).toString());
+      const totalCount = parseInt(localStorage.getItem(`designMatch_lookupCount_${user?.id}`) || "0");
+      localStorage.setItem(`designMatch_lookupCount_${user?.id}`, (totalCount + 1).toString());
 
       if (!isProUser()) {
-        const weeklyCount = parseInt(localStorage.getItem("designMatch_lookup_count_week") || "0");
-        localStorage.setItem("designMatch_lookup_count_week", (weeklyCount + 1).toString());
+        const weeklyCount = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
+        localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, (weeklyCount + 1).toString());
       }
     } catch (err) {
       console.error("Lookup Failed:", err);
@@ -578,11 +614,11 @@ const Studio = () => {
   }, [autoLookup, uploadDataUrl, isSearching, handleLookup]);
 
   useEffect(() => {
-    if (localStorage.getItem("designMatch_showProAfterLogin") === "true") {
+    if (localStorage.getItem(`designMatch_showProAfterLogin_${user?.id}`) === "true") {
       setShowSubscription(true);
-      localStorage.removeItem("designMatch_showProAfterLogin");
+      localStorage.removeItem(`designMatch_showProAfterLogin_${user?.id}`);
     }
-  }, []);
+  }, [user?.id]);
 
   const checkProLimit = () => {
     // Always allow all features for demo
@@ -632,13 +668,13 @@ const Studio = () => {
     <PhoneFrame>
       <HeaderBar
         onLookup={handleLookup} isSearching={isSearching} onExit={() => navigate("/")}
-        onSave={handleSave}
+        onSave={handleSaveClick}
         onUndo={handleUndo} onRedo={handleRedo}
         canUndo={undoStack.length > 0} canRedo={redoStack.length > 0}
       />
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
-      <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-[#0A0A0A]">
+      <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden bg-black">
 
         {/* Floating Context Toolbar */}
         <FloatingContextBar
@@ -693,6 +729,42 @@ const Studio = () => {
       <AnimatePresence>{isSearching && <ScanOverlay />}</AnimatePresence>
       <ResultsDrawer open={showResults} onClose={() => setShowResults(false)} results={results} />
       <PaymentModal open={showSubscription} onClose={() => setShowSubscription(false)} onSuccess={() => setShowSubscription(false)} />
+
+      {/* Custom Save Form Modal */}
+      <AnimatePresence>
+        {showSaveModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-black border border-[#222] p-6 rounded-2xl w-full max-w-[320px] shadow-2xl flex flex-col gap-4"
+            >
+              <h2 className="text-white text-lg font-bold">Save Design</h2>
+              <p className="text-white/50 text-sm">Enter a new name for your design? (Optional)</p>
+              <input
+                type="text"
+                value={currentSaveName}
+                onChange={(e) => setCurrentSaveName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && confirmSave(currentSaveName)}
+                placeholder="Design Name"
+                autoFocus
+                className="bg-[#111] border border-[#333] text-white px-4 py-3 rounded-xl outline-none focus:border-white/50 transition-colors"
+                maxLength={30}
+              />
+              <div className="flex items-center gap-3 mt-2">
+                <button onClick={() => setShowSaveModal(false)} className="flex-1 py-3 rounded-xl bg-transparent border border-[#333] text-white/70 font-semibold hover:bg-[#111] hover:text-white transition-colors">
+                  Cancel
+                </button>
+                <button onClick={() => confirmSave(currentSaveName)} className="flex-1 py-3 rounded-xl bg-white text-black font-bold active:scale-95 transition-transform hover:bg-[#EEE]">
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PhoneFrame>
   );
 };

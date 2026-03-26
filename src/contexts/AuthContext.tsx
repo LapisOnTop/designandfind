@@ -14,7 +14,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,
-  signOut: async () => {},
+  signOut: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -24,19 +24,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Safety timeout in case getSession hangs
+    const timer = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn("AuthContext: Force setting loading to false due to timeout");
+        setLoading(false);
+      }
+    }, 1500);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setLoading(false);
+      if (isMounted) {
+        setSession(newSession);
+        setLoading(false);
+        clearTimeout(timer);
+      }
     });
 
-    getInitialSession().then(({ session }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    getInitialSession()
+      .then(({ session }) => {
+        if (isMounted) {
+          setSession(session);
+          setLoading(false);
+          clearTimeout(timer);
+        }
+      })
+      .catch((err) => {
+        console.error("Auth context session fetch error:", err);
+        if (isMounted) {
+          setLoading(false);
+          clearTimeout(timer);
+        }
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
