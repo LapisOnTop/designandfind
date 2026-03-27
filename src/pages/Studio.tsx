@@ -551,7 +551,8 @@ const Studio = () => {
     setShowResults(false);
     try {
       const minScanTime = new Promise(resolve => setTimeout(resolve, 2500));
-      const dataUrl = canvasRef.current.toDataURL({ format: "png", quality: 1 });
+      // Export at reduced size/quality to keep payload small for the edge function
+      const dataUrl = canvasRef.current.toDataURL({ format: "jpeg", quality: 0.6, multiplier: 0.5 });
 
       let realMatches: ProductResult[] = [];
       let pricedMatches: ProductResult[] = [];
