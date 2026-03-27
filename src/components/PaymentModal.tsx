@@ -30,8 +30,11 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
       localStorage.setItem("pro_sub_expiry", exp.toISOString());
       localStorage.setItem("designMatch_plan", plan);
       setProcessing(false);
-      toast.success("You're Pro now!");
-      onSuccess();
+      toast.success("You're Pro now! Refreshing...");
+      // Refresh the page after a brief delay so the toast is visible
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
     }, 1800);
   };
 
