@@ -555,7 +555,6 @@ const Studio = () => {
       const dataUrl = canvasRef.current.toDataURL({ format: "jpeg", quality: 0.6, multiplier: 0.5 });
 
       let realMatches: ProductResult[] = [];
-      let pricedMatches: ProductResult[] = [];
 
       try {
         const [apiResponse] = await Promise.all([
@@ -571,11 +570,6 @@ const Studio = () => {
           toast.error("API Error: " + data.error);
         } else {
           realMatches = data?.results || [];
-          pricedMatches = realMatches.filter(r => {
-            if (!r.price) return false;
-            const p = r.price.toLowerCase().trim();
-            return p !== "" && p !== "0" && p !== "dynamic" && p !== "price n/a" && p !== "n/a" && /\d/.test(p);
-          });
         }
       } catch (apiErr: any) {
         console.error("API call failed:", apiErr);
@@ -605,7 +599,7 @@ const Studio = () => {
       toast.error("Lookup failed. Please try again.");
     }
     finally { setIsSearching(false); }
-  }, [isSearching, backgroundUrl, templateColor]);
+  }, [isSearching, backgroundUrl, templateColor, user?.id]);
 
   const handleCanvasReady = useCallback(() => {
     // Check for autoLookup (Upload Design flow)

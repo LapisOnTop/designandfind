@@ -22,7 +22,6 @@ const Account = () => {
     const [displayName, setDisplayName] = useState(user?.email?.split('@')[0] || "Guest User");
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const nameInputRef = useRef<HTMLInputElement>(null);
-
     const [showSubscription, setShowSubscription] = useState(false);
 
     // Get lookup count

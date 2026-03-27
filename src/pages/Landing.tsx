@@ -78,6 +78,8 @@ const Landing = () => {
         console.error("Lookup API failed:", err);
         await minScanTime;
         toast.error("Network Error: Failed to contact the visual search server.");
+        setIsSearching(false);
+        return;
       }
 
       if (finalResults.length === 0) {
