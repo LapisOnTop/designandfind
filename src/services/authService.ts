@@ -17,6 +17,10 @@ export const getInitialSession = async (): Promise<AuthSession> => {
 };
 
 export const signOut = async () => {
+  localStorage.removeItem("pro_sub");
+  localStorage.removeItem("pro_sub_expiry");
+  localStorage.removeItem("designMatch_plan");
+  localStorage.removeItem("designMatch_subSeen");
   await supabase.auth.signOut();
 };
 

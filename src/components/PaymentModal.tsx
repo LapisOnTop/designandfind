@@ -16,8 +16,8 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
   const [form, setForm] = useState({ phone: "", email: "", card: "", exp: "", cvc: "", name: "" });
 
   const pricing = {
-    monthly: { amount: "₱525", sub: "/mo", alt: "$9.29 USD" },
-    yearly: { amount: "₱2,600", sub: "/yr", alt: "$46 USD", badge: "Save 59%" }
+    monthly: { amount: "₱500", sub: "/mo", alt: "$8.80 USD" },
+    yearly: { amount: "₱1,500", sub: "/yr", alt: "$26.50 USD", badge: "Save 75%" }
   };
 
   const handleCheckout = () => {
