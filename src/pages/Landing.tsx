@@ -82,10 +82,7 @@ const Landing = () => {
 
       if (finalResults.length === 0) {
         setIsSearching(false);
-        // Only show this fallback toast if we didn't just throw a specific API error toast
-        if (!document.querySelector('[data-sonner-toast]')) {
-          toast.error("No matches found or search failed.");
-        }
+        toast.error("Visual search returned no matches. Try a different image.");
         return;
       }
 

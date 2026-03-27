@@ -582,15 +582,13 @@ const Studio = () => {
         toast.error("Network Error: Failed to contact the visual search server.");
       }
 
-      if (pricedMatches.length === 0) {
+      if (realMatches.length === 0) {
         setIsSearching(false);
-        if (!document.querySelector('[data-sonner-toast]')) {
-          toast.error("Visual search returned no exact matches or failed.");
-        }
+        toast.error("Visual search returned no matches. Try a different design.");
         return;
       }
 
-      setResults(pricedMatches.slice(0, 24));
+      setResults(realMatches.slice(0, 24));
       setShowResults(true);
 
       // Increment lookup counters
