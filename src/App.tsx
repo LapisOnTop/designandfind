@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Landing from "./pages/Landing";
-import Auth, { authFlowInProgress } from "./pages/Auth";
+import Auth from "./pages/Auth";
 import Studio from "./pages/Studio";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
@@ -35,7 +35,8 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   // Don't redirect if auth flow is in progress (OTP verification, password reset, etc.)
-  if (user && !authFlowInProgress) {
+  const isAuthInProgress = sessionStorage.getItem("authFlowInProgress") === "true";
+  if (user && !isAuthInProgress) {
     const returnTo = new URLSearchParams(location.search).get("returnTo");
     return <Navigate to={returnTo ? decodeURIComponent(returnTo) : "/studio"} replace />;
   }

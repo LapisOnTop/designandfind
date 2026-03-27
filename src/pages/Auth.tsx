@@ -9,8 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { isProUser } from "@/services/proService";
 import PaymentModal from "@/components/PaymentModal";
 
-// Exported flag so PublicRoute can check if auth is in progress
-export let authFlowInProgress = false;
+// Helper for reliable auth flow tracking
+const setAuthProgress = (val: boolean) => sessionStorage.setItem("authFlowInProgress", val ? "true" : "false");
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -67,7 +67,7 @@ const Auth = () => {
   useEffect(() => {
     return () => {
       if (cooldownRef.current) clearInterval(cooldownRef.current);
-      authFlowInProgress = false; // Reset on unmount
+      setAuthProgress(false); // Reset on unmount
     };
   }, []);
 
@@ -169,7 +169,7 @@ const Auth = () => {
     setStatusMessage(null);
     try {
       if (mode === "signup") {
-        authFlowInProgress = true;
+        setAuthProgress(true);
         const { session, user: signedUpUser } = await signUpWithEmail({ email, password, displayName });
         if (signedUpUser?.identities && signedUpUser.identities.length === 0) {
           throw new Error("User already registered");
@@ -185,14 +185,23 @@ const Auth = () => {
         startResendCooldown();
         setStatusMessage({ text: "Verification code sent to your email!", type: "success" });
       } else if (mode === "login") {
-        authFlowInProgress = true;
+        setAuthProgress(true);
         await signInWithPassword({ email, password });
         await supabase.auth.signOut();
-        await sendEmailOtp(email, undefined);
+        try {
+          await sendEmailOtp(email, undefined);
+        } catch (otpErr: any) {
+          if (otpErr.status === 429 || /rate limit/i.test(otpErr.message) || /seconds/i.test(otpErr.message)) {
+            console.log("OTP rate limit hit, proceeding to step 2 since code was likely sent recently.");
+          } else {
+            throw otpErr;
+          }
+        }
         setStep(2);
         startResendCooldown();
         setStatusMessage({ text: "Login code sent to your email!", type: "success" });
       } else if (mode === "forgot_password") {
+        setAuthProgress(true);
         await resetPasswordForEmail(email);
         setStep(2);
         startResendCooldown();
@@ -235,14 +244,14 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "forgot_password") {
-        authFlowInProgress = true;
+        setAuthProgress(true);
         await verifyEmailOtp(email, otpCode, undefined, 'recovery');
         // Keep the session alive — we need it for updateUserPassword
-        // authFlowInProgress prevents PublicRoute from redirecting
+        // setAuthProgress prevents PublicRoute from redirecting
         setStep(3);
         setStatusMessage({ text: "Code verified! Set your new password below.", type: "success" });
       } else {
-        authFlowInProgress = true;
+        setAuthProgress(true);
         await verifyEmailOtp(email, otpCode, mode === "signup" ? displayName : undefined, mode === "signup" ? 'signup' : 'email');
         setAuthMode(mode);
         setIsSuccess(true);
@@ -278,13 +287,13 @@ const Auth = () => {
   };
 
   const handlePostAuthContinue = () => {
-    authFlowInProgress = false;
+    setAuthProgress(false);
     setShowPostAuthModal(false);
     navigate(decodeURIComponent(returnTo), { replace: true });
   };
 
   const handlePaymentSuccess = () => {
-    authFlowInProgress = false;
+    setAuthProgress(false);
     setShowPaymentModal(false);
     setShowPostAuthModal(false);
     navigate(decodeURIComponent(returnTo), { replace: true });
