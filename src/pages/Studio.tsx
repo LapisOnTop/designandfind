@@ -17,6 +17,7 @@ import PaymentModal from "@/components/PaymentModal";
 import { supabase } from "@/integrations/supabase/client";
 import { isProUser } from "@/services/proService";
 import { toast } from "sonner";
+import { getLookupStats, incrementLookup } from "@/services/lookupService";
 import tshirtMockup from "@/assets/tshirt-mockup.png";
 
 const TEMPLATE_IMAGES: Record<string, string> = {
@@ -528,20 +529,13 @@ const Studio = () => {
     if (!canvasRef.current || isSearching) return;
 
     // Check lookup limit for free users
-    if (!isProUser()) {
-      const now = Date.now();
-      const lastReset = parseInt(localStorage.getItem(`designMatch_lookup_lastReset_${user?.id}`) || "0");
-      const lookupsThisWeek = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
-      const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-
-      if (now - lastReset > ONE_WEEK) {
-        // Reset weekly limit
-        localStorage.setItem(`designMatch_lookup_lastReset_${user?.id}`, now.toString());
-        localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, "0");
-      } else if (lookupsThisWeek >= 1) {
+    // Check lookup limit for free users using central service
+    if (!isProUser() && user?.id) {
+      const stats = getLookupStats(user.id);
+      if (stats.limitReached) {
         setShowSubscription(true);
-        toast.error("Weekly lookup limit reached. Upgrade to Pro for unlimited searches!", {
-          description: "Free limits refresh every 7 days."
+        toast.error("Lookup limit reached. Upgrade to Pro for unlimited searches!", {
+          description: "Free limits refresh every 3 days."
         });
         return;
       }
@@ -586,13 +580,9 @@ const Studio = () => {
       setResults(realMatches.slice(0, 24));
       setShowResults(true);
 
-      // Increment lookup counters
-      const totalCount = parseInt(localStorage.getItem(`designMatch_lookupCount_${user?.id}`) || "0");
-      localStorage.setItem(`designMatch_lookupCount_${user?.id}`, (totalCount + 1).toString());
-
-      if (!isProUser()) {
-        const weeklyCount = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
-        localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, (weeklyCount + 1).toString());
+      // Increment lookup counters using central service
+      if (user?.id) {
+        incrementLookup(user.id);
       }
     } catch (err) {
       console.error("Lookup Failed:", err);

@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ResultsDrawer, { ProductResult } from "@/components/ResultsDrawer";
 import ScanOverlay from "@/components/ScanOverlay";
 import PaymentModal from "@/components/PaymentModal";
+import { getLookupStats, incrementLookup } from "@/services/lookupService";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -30,16 +31,9 @@ const Landing = () => {
     }
     const isPro = isProUser();
     if (!isPro) {
-      const weekCount = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
-      const lastReset = parseInt(localStorage.getItem(`designMatch_lookup_lastReset_${user?.id}`) || "0");
-      const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-      const now = Date.now();
-      if (now - lastReset >= ONE_WEEK) {
-        localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, "0");
-        localStorage.setItem(`designMatch_lookup_lastReset_${user?.id}`, String(now));
-      } else if (weekCount >= 1) {
-        const daysLeft = Math.ceil((lastReset + ONE_WEEK - now) / (1000 * 60 * 60 * 24));
-        toast.error(`Free limit reached. Resets in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}. Upgrade for unlimited.`);
+      const stats = getLookupStats(user.id);
+      if (stats.limitReached) {
+        toast.error(`Free limit reached. Resets in ${stats.daysUntilReset} day${stats.daysUntilReset !== 1 ? "s" : ""}. Upgrade for unlimited.`);
         setShowSubscription(true);
         return;
       }
@@ -92,12 +86,10 @@ const Landing = () => {
       setShowResults(true);
       setIsSearching(false);
 
-      const prev = parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user?.id}`) || "0");
-      localStorage.setItem(`designMatch_lookup_count_week_${user?.id}`, String(prev + 1));
-      const total = parseInt(localStorage.getItem(`designMatch_lookupCount_${user?.id}`) || "0");
-      localStorage.setItem(`designMatch_lookupCount_${user?.id}`, String(total + 1));
-      if (!localStorage.getItem(`designMatch_lookup_lastReset_${user?.id}`)) {
-        localStorage.setItem(`designMatch_lookup_lastReset_${user?.id}`, String(Date.now()));
+      setIsSearching(false);
+
+      if (user?.id) {
+        incrementLookup(user.id);
       }
     };
     reader.readAsDataURL(file);

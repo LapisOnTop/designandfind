@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import PaymentModal from "@/components/PaymentModal";
 import DownloadModal from "@/components/DownloadModal";
 import { toast } from "sonner";
+import { getLookupStats, LOOKUP_LIMIT } from "@/services/lookupService";
 
 const Account = () => {
     const navigate = useNavigate();
@@ -42,10 +43,11 @@ const Account = () => {
             }
         });
 
-        // Update counts on mount securely keyed to user
-        setLookupCount(parseInt(localStorage.getItem(`designMatch_lookupCount_${user.id}`) || "0"));
-        setWeeklyLookups(parseInt(localStorage.getItem(`designMatch_lookup_count_week_${user.id}`) || "0"));
-        setLastReset(parseInt(localStorage.getItem(`designMatch_lookup_lastReset_${user.id}`) || "0"));
+        // Update counts on mount using central service
+        const stats = getLookupStats(user.id);
+        setLookupCount(stats.totalCount);
+        setWeeklyLookups(stats.periodCount);
+        setLastReset(stats.lastReset);
 
         try {
             const history = JSON.parse(localStorage.getItem(`designMatch_history_${user.id}`) || "[]");
@@ -101,12 +103,9 @@ const Account = () => {
     };
 
     const getDaysUntilReset = () => {
-        if (!lastReset) return 0;
-        const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-        const resetTime = lastReset + ONE_WEEK;
-        const now = Date.now();
-        if (now >= resetTime) return 0;
-        return Math.ceil((resetTime - now) / (1000 * 60 * 60 * 24));
+        if (!user?.id) return 0;
+        const stats = getLookupStats(user.id);
+        return stats.daysUntilReset;
     };
 
     return (
@@ -209,20 +208,21 @@ const Account = () => {
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-bold text-[#555] uppercase tracking-wider">Lookup Limit</span>
                                         <span className="text-[10px] font-bold text-[#888]">
-                                            {isPro ? "Unlimited" : `${weeklyLookups} / 1 Used`}
+                                            {isPro ? "Unlimited" : `${weeklyLookups} / ${LOOKUP_LIMIT} Used`}
                                         </span>
                                     </div>
                                     {/* Progress Bar */}
                                     <div className="h-1.5 w-full bg-[#222] rounded-full mt-2 overflow-hidden">
                                         <div
-                                            className={`h-full rounded-full transition-all duration-500 ${isPro ? 'bg-white w-full' : (weeklyLookups >= 1 ? 'bg-red-500 w-full' : 'bg-white w-0')}`}
+                                            className={`h-full rounded-full transition-all duration-500 ${isPro ? 'bg-white w-full' : (weeklyLookups >= LOOKUP_LIMIT ? 'bg-red-500 w-full' : 'bg-white')}`}
+                                            style={!isPro ? { width: `${Math.min((weeklyLookups / LOOKUP_LIMIT) * 100, 100)}%` } : undefined}
                                         />
                                     </div>
                                 </div>
                             </div>
                             <div className="flex items-center justify-between text-[10px] text-[#555] px-1">
                                 <span>Total lifetime: {lookupCount}</span>
-                                {!isPro && weeklyLookups >= 1 && (
+                                {!isPro && weeklyLookups >= LOOKUP_LIMIT && (
                                     <span className="text-orange-400">Resets in {getDaysUntilReset()} days</span>
                                 )}
                             </div>
