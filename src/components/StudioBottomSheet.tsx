@@ -17,22 +17,44 @@ interface StudioBottomSheetProps {
     onReorderLayer: (id: string, direction: "up" | "down") => void;
     onRequirePro: () => void;
     // New Style handlers
-    strokeWeight: number;
-    setStrokeWeight: (val: number) => void;
-    strokeColor: string;
-    setStrokeColor: (color: string) => void;
     shadowBlur: number;
     setShadowBlur: (val: number) => void;
 }
 
 const FONTS = [
+    // 10 Free Fonts
     { name: "Inter", type: "Sans-serif", pro: false },
     { name: "Roboto", type: "Sans-serif", pro: false },
+    { name: "Open Sans", type: "Sans-serif", pro: false },
+    { name: "Lato", type: "Sans-serif", pro: false },
+    { name: "Montserrat", type: "Sans-serif", pro: false },
+    { name: "Poppins", type: "Sans-serif", pro: false },
+    { name: "Oswald", type: "Sans-serif", pro: false },
+    { name: "Source Sans Pro", type: "Sans-serif", pro: false },
+    { name: "Raleway", type: "Sans-serif", pro: false },
+    { name: "Ubuntu", type: "Sans-serif", pro: false },
+
+    // 20 Pro Fashion Fonts
     { name: "Playfair Display", type: "Display", pro: true },
-    { name: "Pacifico", type: "Display", pro: true },
-    { name: "Caveat", type: "Handwriting", pro: false },
-    { name: "Dancing Script", type: "Handwriting", pro: true },
-    { name: "Space Mono", type: "Monospace", pro: false },
+    { name: "Cinzel", type: "Display", pro: true },
+    { name: "Cormorant Garamond", type: "Display", pro: true },
+    { name: "Didot", type: "Display", pro: true },
+    { name: "Baskervville", type: "Display", pro: true },
+    { name: "Prata", type: "Display", pro: true },
+    { name: "Bodoni Moda", type: "Display", pro: true },
+    { name: "Jost", type: "Sans-serif", pro: true },
+    { name: "Syne", type: "Display", pro: true },
+    { name: "Tenor Sans", type: "Sans-serif", pro: true },
+    { name: "Marcellus", type: "Display", pro: true },
+    { name: "Zilla Slab", type: "Display", pro: true },
+    { name: "DM Serif Display", type: "Display", pro: true },
+    { name: "Rufina", type: "Display", pro: true },
+    { name: "Vidaloka", type: "Display", pro: true },
+    { name: "Italiana", type: "Display", pro: true },
+    { name: "Oranienbaum", type: "Display", pro: true },
+    { name: "Yeseva One", type: "Display", pro: true },
+    { name: "Gilda Display", type: "Display", pro: true },
+    { name: "Forum", type: "Display", pro: true },
 ];
 
 const PRESET_COLORS = [
@@ -59,13 +81,21 @@ const StudioBottomSheet = ({
     onToggleLayerVisibility,
     onReorderLayer,
     onRequirePro,
-    strokeWeight,
-    setStrokeWeight,
-    strokeColor,
-    setStrokeColor,
+    onReorderLayer,
+    onRequirePro,
     shadowBlur,
     setShadowBlur
 }: StudioBottomSheetProps) => {
+    React.useEffect(() => {
+        const fontFamilies = FONTS.map(f => `family=${f.name.replace(/\s+/g, '+')}:wght@400;700`).join('&');
+        const url = `https://fonts.googleapis.com/css2?${fontFamilies}&display=swap`;
+        if (!document.querySelector(`link[href="${url}"]`)) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = url;
+            document.head.appendChild(link);
+        }
+    }, []);
     const [fontFilter, setFontFilter] = useState("All");
     const [fontSearch, setFontSearch] = useState("");
     const filteredFonts = FONTS.filter(f => {
@@ -91,9 +121,9 @@ const StudioBottomSheet = ({
                         <div className="px-4 pb-2">
                             <div className="relative">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Search fonts..." 
+                                <input
+                                    type="text"
+                                    placeholder="Search fonts..."
                                     value={fontSearch}
                                     onChange={(e) => setFontSearch(e.target.value)}
                                     onKeyDown={(e) => {
@@ -102,7 +132,7 @@ const StudioBottomSheet = ({
                                             e.stopPropagation();
                                         }
                                     }}
-                                    className="w-full h-10 bg-[#1a1a1a] rounded-xl pl-9 pr-4 text-sm text-white placeholder:text-[#555] outline-none border border-[#222] focus:border-primary" 
+                                    className="w-full h-10 bg-[#1a1a1a] rounded-xl pl-9 pr-4 text-sm text-white placeholder:text-[#555] outline-none border border-[#222] focus:border-primary"
                                 />
                             </div>
                         </div>
@@ -166,39 +196,8 @@ const StudioBottomSheet = ({
                 );
 
             case "styles":
-                if (!isProUser()) {
-                    return (
-                        <div className="px-6 py-12 flex flex-col items-center justify-center text-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-[#111] border border-[#222] flex items-center justify-center text-2xl">👑</div>
-                            <h3 className="text-lg font-bold text-white">Styles are a Pro feature</h3>
-                            <p className="text-sm text-[#888] max-w-[250px]">Upgrade to add strokes, shadows, and advanced effects to your designs.</p>
-                            <button onClick={onRequirePro} className="mt-2 px-6 py-3 bg-primary text-white text-sm font-semibold rounded-xl">View Pro Plans</button>
-                        </div>
-                    );
-                }
                 return (
                     <div className="px-4 py-2 pb-8 flex flex-col gap-8">
-                        {/* Stroke Controls */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold text-[#888] uppercase tracking-widest">Outline (Stroke)</h3>
-                                <span className="text-xs text-white font-mono">{strokeWeight}px</span>
-                            </div>
-                            <div className="bg-[#1a1a1a] p-4 rounded-2xl border border-[#222] space-y-4">
-                                <input type="range" min="0" max="20" step="1" value={strokeWeight} onChange={(e) => setStrokeWeight(parseInt(e.target.value))}
-                                    className="w-full h-1 bg-[#333] rounded-full appearance-none cursor-pointer" />
-                                <div className="flex items-center gap-3">
-                                    <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)}
-                                        className="w-10 h-10 rounded-lg bg-transparent border-0 cursor-pointer" />
-                                    <div className="flex-1 flex gap-2 overflow-x-auto hide-scrollbar">
-                                        {["#ffffff", "#000000", "#ef4444", "#3b82f6", "#10b981"].map(c => (
-                                            <button key={c} onClick={() => setStrokeColor(c)} className="w-8 h-8 rounded-full border border-[#333] shrink-0" style={{ backgroundColor: c }} />
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         {/* Shadow Controls */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -232,15 +231,15 @@ const StudioBottomSheet = ({
                             canvasElements.map((el, i) => (
                                 <div key={el.id} className="flex items-center gap-2 p-3 bg-[#1a1a1a] border border-[#222] rounded-xl">
                                     <div className="flex flex-col">
-                                        <button 
-                                            onClick={() => onReorderLayer(el.id, 'up')} 
+                                        <button
+                                            onClick={() => onReorderLayer(el.id, 'up')}
                                             disabled={i === 0}
                                             className="text-[#555] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5"
                                         >
                                             <ChevronUp size={14} />
                                         </button>
-                                        <button 
-                                            onClick={() => onReorderLayer(el.id, 'down')} 
+                                        <button
+                                            onClick={() => onReorderLayer(el.id, 'down')}
                                             disabled={i === canvasElements.length - 1}
                                             className="text-[#555] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed p-0.5"
                                         >

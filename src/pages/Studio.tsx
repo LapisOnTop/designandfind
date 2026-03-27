@@ -68,8 +68,6 @@ const Studio = () => {
   const [hasSelection, setHasSelection] = useState(false);
   const [contextBarPos, setContextBarPos] = useState<{ top: number, left: number } | null>(null);
   const [opacity, setOpacity] = useState(1);
-  const [strokeWeight, setStrokeWeight] = useState(0);
-  const [strokeColor, setStrokeColor] = useState("#000000");
   const [shadowBlur, setShadowBlur] = useState(0);
   const [canvasElements, setCanvasElements] = useState<any[]>([]);
 
@@ -113,8 +111,6 @@ const Studio = () => {
     if (active) {
       setHasSelection(true);
       setOpacity(active.opacity ?? 1);
-      setStrokeWeight(active.strokeWidth ?? 0);
-      setStrokeColor((active.stroke as string) || "#000000");
 
       const shadow = active.shadow as fabric.Shadow;
       setShadowBlur(shadow?.blur ?? 0);
@@ -358,26 +354,6 @@ const Studio = () => {
     }
   };
 
-  const handleSetStrokeWeight = (val: number) => {
-    const canvas = canvasRef.current;
-    const obj = canvas?.getActiveObject();
-    if (canvas && obj) {
-      obj.set("strokeWidth", val);
-      setStrokeWeight(val);
-      canvas.renderAll();
-    }
-  };
-
-  const handleSetStrokeColor = (color: string) => {
-    const canvas = canvasRef.current;
-    const obj = canvas?.getActiveObject();
-    if (canvas && obj) {
-      obj.set("stroke", color);
-      setStrokeColor(color);
-      canvas.renderAll();
-    }
-  };
-
   const handleSetShadowBlur = (val: number) => {
     const canvas = canvasRef.current;
     const obj = canvas?.getActiveObject();
@@ -535,7 +511,7 @@ const Studio = () => {
       if (stats.limitReached) {
         setShowSubscription(true);
         toast.error("Lookup limit reached. Upgrade to Pro for unlimited searches!", {
-          description: "Free limits refresh every 3 days."
+          description: "Free limits refresh every 7 days."
         });
         return;
       }
@@ -694,20 +670,36 @@ const Studio = () => {
         activeSheet={activeBottomSheet} onClose={() => setActiveBottomSheet(null)}
         onAddText={(font) => {
           if (!checkProLimit()) return;
-          const canvas = canvasRef.current;
-          const text = new fabric.IText("Your Text", {
-            left: 179, top: 200, originX: "center", originY: "center",
-            fontSize: 32, fontFamily: font, fill: "#000000", fontWeight: "bold",
-            cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false, name: "userText",
-          });
-          canvas?.add(text); canvas?.setActiveObject(text); canvas?.renderAll();
+          const addTextToCanvas = () => {
+            const canvas = canvasRef.current;
+            const text = new fabric.IText("Your Text", {
+              left: 179, top: 200, originX: "center", originY: "center",
+              fontSize: 32, fontFamily: font, fill: "#000000", fontWeight: "bold",
+              cornerColor: "#000", cornerStrokeColor: "#fff", borderColor: "#000", cornerSize: 10, transparentCorners: false, name: "userText",
+            });
+            canvas?.add(text); canvas?.setActiveObject(text); canvas?.renderAll();
+          };
+          const fontUrl = `https://fonts.googleapis.com/css2?family=${font.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+          if (!document.querySelector(`link[href="${fontUrl}"]`)) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = fontUrl;
+            document.head.appendChild(link);
+            setTimeout(() => {
+              if (document.fonts) {
+                document.fonts.load(`bold 32px "${font}"`).then(addTextToCanvas).catch(addTextToCanvas);
+              } else {
+                addTextToCanvas();
+              }
+            }, 150);
+          } else {
+            addTextToCanvas();
+          }
         }}
         onAddShape={handleAddShape}
         templateColor={templateColor} setTemplateColor={setTemplateColor}
         canvasElements={canvasElements} onToggleLayerVisibility={handleToggleLayer}
         onReorderLayer={handleReorderLayer} onRequirePro={() => setShowSubscription(true)}
-        strokeWeight={strokeWeight} setStrokeWeight={handleSetStrokeWeight}
-        strokeColor={strokeColor} setStrokeColor={handleSetStrokeColor}
         shadowBlur={shadowBlur} setShadowBlur={handleSetShadowBlur}
       />
 

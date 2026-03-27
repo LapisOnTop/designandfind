@@ -6,7 +6,7 @@ import { ArrowLeft, Mail, Lock, User, Crown, Check, Eye, EyeOff, ShieldCheck } f
 import PhoneFrame from "@/components/PhoneFrame";
 import { signUpWithEmail, signInWithPassword, sendEmailOtp, verifyEmailOtp, resetPasswordForEmail, updateUserPassword, resendSignupOtp } from "@/services/authService";
 import { supabase } from "@/integrations/supabase/client";
-import { isProUser } from "@/services/proService";
+import { isProUser, getCurrentPlan } from "@/services/proService";
 import PaymentModal from "@/components/PaymentModal";
 
 // Helper for reliable auth flow tracking
@@ -202,6 +202,18 @@ const Auth = () => {
         setStatusMessage({ text: "Login code sent to your email!", type: "success" });
       } else if (mode === "forgot_password") {
         setAuthProgress(true);
+        // First verify the email actually exists by trying a dummy sign-in
+        try {
+          await signInWithPassword({ email, password: "__check_exists__" });
+        } catch (checkErr: any) {
+          // "Invalid login credentials" means the email exists but the password was wrong — that's fine
+          if (!/invalid login credentials/i.test(checkErr?.message || "")) {
+            // Any other error (like user not found) means the account doesn't exist
+            setStatusMessage({ text: "No account found with this email address.", type: "error" });
+            setLoading(false);
+            return;
+          }
+        }
         await resetPasswordForEmail(email);
         setStep(2);
         startResendCooldown();
@@ -783,7 +795,7 @@ const Auth = () => {
                       <div className="flex justify-between text-sm">
                         <span className="text-white/40">Plan</span>
                         <span className="text-white font-medium">
-                          {localStorage.getItem("designMatch_plan") === "yearly" ? "Yearly" : "Monthly"}
+                          {getCurrentPlan() === "yearly" ? "Yearly" : "Monthly"}
                         </span>
                       </div>
                       <div className="w-full h-px bg-white/[0.04]" />

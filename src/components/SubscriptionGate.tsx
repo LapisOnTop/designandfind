@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Crown, Palette, Type as TypeIcon, Layers, Download, Image, Zap } from "lucide-react";
+import { isProUser } from "../services/proService";
 
 interface SubscriptionGateProps {
   open: boolean;
@@ -9,7 +10,7 @@ interface SubscriptionGateProps {
 
 const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
   const [showClose, setShowClose] = useState(false);
-  const [activated, setActivated] = useState(() => localStorage.getItem("pro_sub") === "true");
+  const [activated, setActivated] = useState(() => isProUser());
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -23,7 +24,7 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
   const handleProcessPayment = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      localStorage.setItem("pro_sub", "true");
+      // This is legacy — PaymentModal handles real activation
       setActivated(true);
       setIsProcessing(false);
       setTimeout(onClose, 1500);
@@ -31,7 +32,7 @@ const SubscriptionGate = ({ open, onClose }: SubscriptionGateProps) => {
   };
 
   const features = [
-    { icon: <Palette size={16} className="text-primary" />, title: "Advanced Stroke & Color" },
+    { icon: <Palette size={16} className="text-primary" />, title: "Premium Font Collection" },
     { icon: <TypeIcon size={16} className="text-primary" />, title: "Premium Fonts" },
     { icon: <Layers size={16} className="text-primary" />, title: "Layer Ordering" },
     { icon: <Download size={16} className="text-primary" />, title: "High-Res Export without Watermarks" },

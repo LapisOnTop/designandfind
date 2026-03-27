@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 import type { TablesInsert } from "@/integrations/supabase/types";
+import { clearProForUser } from "@/services/proService";
 
 export interface AuthSession {
   session: Session | null;
@@ -17,6 +18,13 @@ export const getInitialSession = async (): Promise<AuthSession> => {
 };
 
 export const signOut = async () => {
+  // Get the current user ID before signing out so we can clean up their data
+  const { data } = await supabase.auth.getSession();
+  const userId = data.session?.user?.id;
+  if (userId) {
+    clearProForUser(userId);
+  }
+  // Also clean up legacy global keys from old code
   localStorage.removeItem("pro_sub");
   localStorage.removeItem("pro_sub_expiry");
   localStorage.removeItem("designMatch_plan");

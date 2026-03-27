@@ -1,6 +1,6 @@
 
 export const LOOKUP_LIMIT = 10;
-export const RESET_PERIOD = 3 * 24 * 60 * 60 * 1000; // 3 days in ms
+export const RESET_PERIOD = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
 export interface LookupStats {
     periodCount: number;

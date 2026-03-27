@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Crown, Check, CreditCard } from "lucide-react";
 import { useState } from "react";
+import { isProUser } from "../services/proService";
 
 interface SubscriptionPageProps {
   open: boolean;
@@ -8,12 +9,12 @@ interface SubscriptionPageProps {
 }
 
 const SubscriptionPage = ({ open, onClose }: SubscriptionPageProps) => {
-  const [activated, setActivated] = useState(() => localStorage.getItem("pro_sub") === "true");
+  const [activated, setActivated] = useState(() => isProUser());
   const [cardNumber, setCardNumber] = useState("");
   const [cardName, setCardName] = useState("");
 
   const handleActivate = () => {
-    localStorage.setItem("pro_sub", "true");
+    // This page is mostly legacy; PaymentModal handles real activation
     setActivated(true);
   };
 
@@ -21,7 +22,7 @@ const SubscriptionPage = ({ open, onClose }: SubscriptionPageProps) => {
     "Unlimited design lookups per week",
     "Search across 24 global marketplaces",
     "Export studio designs in high-res",
-    "Advanced text, stroke & shadow tools",
+    "Premium fashion fonts & shadow tools",
     "Direct supplier contact links",
   ];
 
@@ -33,19 +34,19 @@ const SubscriptionPage = ({ open, onClose }: SubscriptionPageProps) => {
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="absolute inset-0 z-[100] bg-background flex flex-col"
+          className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-xl flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-10 pb-3 border-b border-border">
-            <h1 className="text-base font-semibold text-foreground">Go Pro</h1>
-            <button onClick={onClose} className="p-1.5 rounded-lg bg-secondary text-muted-foreground">
+          <div className="flex items-center justify-between px-5 pt-10 pb-3 border-b border-white/10">
+            <h1 className="text-base font-semibold text-white tracking-tight bg-gradient-to-br from-white to-white/50 bg-clip-text text-transparent">Go Pro</h1>
+            <button onClick={onClose} className="p-1.5 rounded-lg bg-white/10 text-white/50 hover:text-white transition-colors">
               <X size={16} />
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-6">
             {/* Plan card */}
-            <div className="bg-secondary rounded-2xl p-5 border border-border">
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-5 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
               <div className="flex items-center gap-2 mb-3">
                 <Crown size={20} className="text-primary" />
                 <span className="text-sm font-semibold text-foreground">Pro Plan</span>

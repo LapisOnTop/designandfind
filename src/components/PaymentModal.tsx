@@ -2,6 +2,8 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Crown, Check, Lock, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { activateProForUser } from "@/services/proService";
 
 interface PaymentModalProps {
   open: boolean;
@@ -20,18 +22,23 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
     yearly: { amount: "₱1,500", sub: "/yr", alt: "$26.50 USD", badge: "Save 75%" }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!method) return toast.error("Pick a payment method");
     setProcessing(true);
-    setTimeout(() => {
-      const exp = new Date();
-      exp.setMonth(exp.getMonth() + (plan === "monthly" ? 1 : 12));
-      localStorage.setItem("pro_sub", "true");
-      localStorage.setItem("pro_sub_expiry", exp.toISOString());
-      localStorage.setItem("designMatch_plan", plan);
+    setTimeout(async () => {
+      // Get the current user ID
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+      if (userId) {
+        activateProForUser(userId, plan);
+      } else {
+        // Fallback: should not happen if user is logged in
+        toast.error("No active session. Please log in first.");
+        setProcessing(false);
+        return;
+      }
       setProcessing(false);
       toast.success("You're Pro now! Refreshing...");
-      // Refresh the page after a brief delay so the toast is visible
       setTimeout(() => {
         window.location.reload();
       }, 800);
@@ -59,7 +66,14 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 320 }}
-            className="relative z-10 w-full max-h-[92%] bg-black rounded-t-[2rem] overflow-hidden flex flex-col"
+            className="relative z-10 w-full max-h-[92%] rounded-t-[2rem] overflow-hidden flex flex-col"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 50%, rgba(120,120,255,0.06) 100%)',
+              backdropFilter: 'blur(40px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              boxShadow: '0 -8px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(255,255,255,0.05)',
+            }}
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1">
@@ -71,7 +85,7 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
 
               {/* Close + Title */}
               <div className="flex items-center justify-between py-3">
-                <h2 className="text-[17px] font-bold text-white tracking-tight">Go Pro</h2>
+                <h2 className="text-[17px] font-bold tracking-tight bg-gradient-to-br from-white to-white/50 bg-clip-text text-transparent">Go Pro</h2>
                 <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center text-white/50 hover:text-white transition-colors">
                   <X size={15} />
                 </button>
@@ -113,7 +127,7 @@ const PaymentModal = ({ open, onClose, onSuccess }: PaymentModalProps) => {
 
               {/* Features */}
               <div className="mt-5 mb-6">
-                {["Unlimited design lookups per week", "Search across 24 global marketplaces", "Export studio designs in high-res", "Advanced text, stroke & shadow tools", "Direct supplier contact links"].map(f => (
+                {["Unlimited design lookups per week", "Search across 24 global marketplaces", "Export studio designs in high-res", "Premium fashion fonts & shadow tools", "Direct supplier contact links"].map(f => (
                   <div key={f} className="flex items-center gap-2.5 py-[6px]">
                     <Check size={13} className="text-blue-400 shrink-0" />
                     <span className="text-[12px] text-white/50">{f}</span>
