@@ -27,8 +27,8 @@ const ScanOverlay = () => {
       exit={{ opacity: 0 }}
       className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden font-sans"
     >
-      {/* Heavy blur backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" />
+      {/* Heavy liquid glass backdrop */}
+      <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[40px]" />
 
       {/* Cyberpunk grid background */}
       <div
@@ -36,16 +36,9 @@ const ScanOverlay = () => {
         style={{ backgroundImage: 'radial-gradient(white 1px, transparent 0)', backgroundSize: '24px 24px' }}
       />
 
-      {/* Scanning Laser Line bouncing up and down */}
+      {/* Scanning Laser Line bouncing up and down - White Glass Look */}
       <motion.div
-        className="absolute left-0 right-0 h-[2px] bg-blue-500 shadow-[0_0_20px_4px_rgba(59,130,246,0.6)] z-10"
-        animate={{ top: ["15%", "85%", "15%"] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      {/* Laser Gradient wash */}
-      <motion.div
-        className="absolute left-0 right-0 h-32 bg-gradient-to-b from-blue-500/10 to-transparent z-0"
+        className="absolute left-0 right-0 h-[2px] bg-white shadow-[0_0_20px_4px_rgba(255,255,255,0.6)] z-10"
         animate={{ top: ["15%", "85%", "15%"] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -53,18 +46,18 @@ const ScanOverlay = () => {
       <div className="relative z-20 flex flex-col items-center justify-center gap-10">
         {/* Animated Icon Box */}
         <div className="relative w-28 h-28 flex items-center justify-center">
-          {/* Corner brackets */}
-          <div className="absolute top-0 left-0 w-5 h-5 border-t-[3px] border-l-[3px] border-blue-500 rounded-tl-sm" />
-          <div className="absolute top-0 right-0 w-5 h-5 border-t-[3px] border-r-[3px] border-blue-500 rounded-tr-sm" />
-          <div className="absolute bottom-0 left-0 w-5 h-5 border-b-[3px] border-l-[3px] border-blue-500 rounded-bl-sm" />
-          <div className="absolute bottom-0 right-0 w-5 h-5 border-b-[3px] border-r-[3px] border-blue-500 rounded-br-sm" />
+          {/* Corner brackets - White */}
+          <div className="absolute top-0 left-0 w-5 h-5 border-t-[3px] border-l-[3px] border-white/70 rounded-tl-sm shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+          <div className="absolute top-0 right-0 w-5 h-5 border-t-[3px] border-r-[3px] border-white/70 rounded-tr-sm shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+          <div className="absolute bottom-0 left-0 w-5 h-5 border-b-[3px] border-l-[3px] border-white/70 rounded-bl-sm shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+          <div className="absolute bottom-0 right-0 w-5 h-5 border-b-[3px] border-r-[3px] border-white/70 rounded-br-sm shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
 
           <motion.div
             animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="bg-blue-500/10 p-5 rounded-full"
+            className="bg-white/[0.04] backdrop-blur-md p-5 rounded-full border border-white/10 shadow-[0_0_30px_rgba(255,255,255,0.1)]"
           >
-            <ScanSearch size={48} className="text-blue-400" />
+            <ScanSearch size={48} className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]" />
           </motion.div>
         </div>
 
@@ -77,7 +70,7 @@ const ScanOverlay = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.3 }}
-              className="text-[11px] font-mono text-blue-400 uppercase tracking-widest text-center font-bold shadow-blue-500/50 [text-shadow:0_0_10px_rgba(59,130,246,0.5)]"
+              className="text-[11px] font-mono text-white tracking-widest text-center font-bold drop-shadow-[0_0_10px_rgba(255,255,255,0.9)]"
             >
               {SCAN_STEPS[step]}
             </motion.p>

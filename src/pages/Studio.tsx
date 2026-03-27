@@ -420,7 +420,7 @@ const Studio = () => {
   };
 
   const handleSaveClick = useCallback(() => {
-    if (!canvasRef.current || !templateId) return;
+    if (!canvasRef.current) return;
     const historyStr = localStorage.getItem(`designMatch_history_${user?.id}`) || "[]";
     const historyItems = JSON.parse(historyStr) as any[];
 
@@ -435,10 +435,10 @@ const Studio = () => {
     const defaultName = existingDesign ? existingDesign.name : `Design ${Date.now().toString().slice(-4)}`;
     setCurrentSaveName(defaultName);
     setShowSaveModal(true);
-  }, [templateId, searchParams, user?.id]);
+  }, [searchParams, user?.id]);
 
   const confirmSave = useCallback((finalName: string) => {
-    if (!canvasRef.current || !templateId) return;
+    if (!canvasRef.current) return;
     setShowSaveModal(false);
 
     try {
@@ -458,12 +458,14 @@ const Studio = () => {
 
       gridLines.forEach(l => l.set("visible", true));
 
+      const activeTemplateId = templateId || (existingDesign ? existingDesign.templateId : "custom");
+
       const meta = {
         id: finalSaveId,
         name: designName,
         date: new Date().toLocaleDateString(),
         thumbnail,
-        templateId,
+        templateId: activeTemplateId,
         activeView
       };
 
