@@ -27,8 +27,8 @@ const ScanOverlay = () => {
       exit={{ opacity: 0 }}
       className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-hidden font-sans"
     >
-      {/* Heavy liquid glass backdrop */}
-      <div className="absolute inset-0 bg-white/[0.02] backdrop-blur-[40px]" />
+      {/* Smoked liquid glass backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[40px]" />
 
       {/* Cyberpunk grid background */}
       <div
