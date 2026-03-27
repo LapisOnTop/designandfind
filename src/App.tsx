@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
+import Auth, { authFlowInProgress } from "./pages/Auth";
 import Studio from "./pages/Studio";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
@@ -31,17 +31,15 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   if (loading) {
-    console.log("PublicRoute: loading is true");
     return null;
   }
 
-  if (user) {
+  // Don't redirect if auth flow is in progress (OTP verification, password reset, etc.)
+  if (user && !authFlowInProgress) {
     const returnTo = new URLSearchParams(location.search).get("returnTo");
-    console.log("PublicRoute: redirecting to", returnTo || "/studio");
     return <Navigate to={returnTo ? decodeURIComponent(returnTo) : "/studio"} replace />;
   }
 
-  console.log("PublicRoute: rendering Auth component");
   return <>{children}</>;
 };
 
